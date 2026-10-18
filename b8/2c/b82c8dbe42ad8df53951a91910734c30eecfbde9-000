@@ -1,0 +1,44 @@
+# 10 October 2026 : runs CapacityN.py in hython for one family count under a wall-clock limit, then appends one JSON line (with its date) to measures/capacity_n.jsonl. EN. FR : lance le test sous une limite de temps et consigne une ligne datee.
+import json
+import subprocess
+import sys
+import time
+
+HYTHON = '/Applications/Houdini/Current/Frameworks/Houdini.framework/Versions/Current/Resources/bin/hython'
+DRIVER = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts/CapacityN.py'
+LOG = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/measures/capacity_n.jsonl'
+NODES_PER_FAMILY = 8
+
+
+def stamp():
+    # 10 October 2026 : the date in English, month spelled out, as the global rule asks. EN. FR : date au format anglais.
+    now = time.localtime()
+    return '%d %s %d, %02d:%02d' % (now.tm_mday, time.strftime('%B', now), now.tm_year, now.tm_hour, now.tm_min)
+
+
+def run(count, res, limit_s):
+    # 10 October 2026 : one hython run, killed at limit_s, its JSON line kept when it finishes. EN. FR : une execution, bornee.
+    start = time.time()
+    base = {'date': stamp(), 'families': count, 'nodes_expected': count * NODES_PER_FAMILY, 'res': res, 'limit_s': limit_s}
+    try:
+        done = subprocess.run([HYTHON, DRIVER, str(count), str(res)], capture_output=True, text=True, timeout=limit_s)
+    except subprocess.TimeoutExpired:
+        base.update(status='timeout', wall_s=round(time.time() - start, 1))
+        return base
+    lines = [ln for ln in done.stdout.splitlines() if ln.startswith('CAPACITY_JSON ')]
+    if done.returncode != 0 or not lines:
+        base.update(status='crash', code=done.returncode, stderr_tail=done.stderr[-400:], wall_s=round(time.time() - start, 1))
+        return base
+    rec = json.loads(lines[-1][len('CAPACITY_JSON '):])
+    rec.update(base, status='ok', wall_s=round(time.time() - start, 1))
+    return rec
+
+
+if __name__ == '__main__':
+    count = int(sys.argv[1])
+    res = int(sys.argv[2]) if len(sys.argv) > 2 else 1254
+    limit_s = float(sys.argv[3]) if len(sys.argv) > 3 else 120.0
+    rec = run(count, res, limit_s)
+    with open(LOG, 'a') as fh:
+        fh.write(json.dumps(rec) + '\n')
+    print(json.dumps(rec))

@@ -1,0 +1,204 @@
+# 10 October 2026 : ADDITIVE ITERATION ENGINE, 64 real Copernicus nodes per iteration, no optimisation yet (later). EN: four templates, each 4 nodes (BLOB, LINE, EDGE helper 3 nodes, RING 8 nodes); run() asserts that one iteration adds exactly 64 nodes. FR : moteur d'itération additif, 64 nodes réels par itération, pas d'optimisation pour l'instant.
+import HeightLab as HL
+T = HL.T
+ITER_NODES = 64
+MASKS = {}   # mask node by full tag, filled by blob(). FR : masques réutilisables.
+def _noise(net, name, drive, size, sx, sy, off):
+    return T.node(net, 'fractalnoise', name, [drive], amp=1.0, center=0.0, elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=sy, offx=off)
+def blob(net, tag, h, drive, region, size, sx, sy, off, t0, t1, amp, mode):
+    # 4 nodes : noise, threshold mask scaled by amp, region gate, combine. FR : tache.
+    n = _noise(net, tag + '_noise', drive, size, sx, sy, off)
+    m = T.smooth(net, tag + '_mask', n, t0, t1, 0.0, amp)
+    MASKS[tag] = m
+    r = T.mix(net, tag + '_region', m, region, 5)
+    return T.mix(net, tag + '_apply', h, r, mode)
+def line(net, tag, h, drive, size, sx, sy, off, width, amp, mode):
+    # 4 nodes : noise, absolute value, band mask, combine. FR : trait fin.
+    n = _noise(net, tag + '_noise', drive, size, sx, sy, off)
+    a = T.node(net, 'function', tag + '_abs', [n], func=0, func_math=0)
+    m = T.smooth(net, tag + '_band', a, 0.0, width, amp, 0.0)
+    return T.mix(net, tag + '_apply', h, m, mode)
+def lineg(net, tag, h, drive, gate, size, sx, sy, off, width, amp, mode):
+    # 5 nodes : noise, absolute value, band mask, gate by a region mask, combine. FR : trait fin limité à une zone.
+    n = _noise(net, tag + '_noise', drive, size, sx, sy, off)
+    a = T.node(net, 'function', tag + '_abs', [n], func=0, func_math=0)
+    m = T.smooth(net, tag + '_band', a, 0.0, width, amp, 0.0)
+    g = T.mix(net, tag + '_gated', m, gate, 5)
+    return T.mix(net, tag + '_apply', h, g, mode)
+def seam(net, tag, h, xs, gate, c, w, e, amp, mode):
+    # 6 nodes : rising and falling smoothstep edges across x, product = a band, gated by a region, scaled to amp, combine. FR : joint vertical net.
+    a = T.smooth(net, tag + '_rise', xs, c - w, c - w + e, 0.0, 1.0)
+    b = T.smooth(net, tag + '_fall', xs, c + w - e, c + w, 1.0, 0.0)
+    band = T.mix(net, tag + '_band', a, b, 5)
+    g = T.mix(net, tag + '_gated', band, gate, 5)
+    sc = T.smooth(net, tag + '_scaled', g, 0.0, 1.0, 0.0, amp)
+    return T.mix(net, tag + '_apply', h, sc, mode)
+def soften(net, tag, h, size, k):
+    # 5 nodes : blur, detail = h - blur, detail times k (const), combine. Removes a fraction k of the detail at this scale. FR : adoucit le grain.
+    b = T.node(net, 'blur', tag + '_blur', [h], size=size, filter=1)
+    d = T.mix(net, tag + '_detail', h, b, 4)
+    c = T.mix(net, tag + '_scaled', d, T.const(net, tag + '_k', h, k), 5)
+    return T.mix(net, tag + '_apply', h, c, 4)
+def grow(net, tag, h, chipmask, gate, size, t0, t1, depth, mode):
+    # 4 nodes : blur of a chip mask (dilation by blur), threshold to a zone of depth, gate by a region, combine. Merges neighbouring chips into larger ones. FR : dilatation des chips.
+    b = T.node(net, 'blur', tag + '_blur', [chipmask], size=size, filter=1)
+    z = T.smooth(net, tag + '_zone', b, t0, t1, 0.0, depth)
+    r = T.mix(net, tag + '_gated', z, gate, 5)
+    return T.mix(net, tag + '_apply', h, r, mode)
+def fill(net, tag, h, drive, gate, size, sx, sy, off, t0, t1, src):
+    # 10 October 2026 : replaces the constant-level paint template, which would have covered about 75 percent of the sheet. EN: 8 nodes : noise, smooth mask, gate by a region, blur of the mask (rounds every edge), inverse, height kept where the mask is 0, source times mask, add. The height is pulled smoothly toward a measured source profile (the paint level without chips). FR : remplissage lisse vers le profil de peinture mesure, sans arete vive.
+    n = _noise(net, tag + '_noise', drive, size, sx, sy, off)
+    m = T.smooth(net, tag + '_mask', n, t0, t1, 0.0, 1.0)
+    mg = T.mix(net, tag + '_gated', m, gate, 5)
+    ms = T.node(net, 'blur', tag + '_soft', [mg], size=0.006, filter=1)
+    inv = T.lin(net, tag + '_inv', ms, 0.0, 1.0, 1.0, 0.0)
+    keep = T.mix(net, tag + '_keep', h, inv, 5)
+    pk = T.mix(net, tag + '_source', ms, src, 5)
+    return T.mix(net, tag + '_apply', keep, pk, 3)
+def knee(net, tag, h, gate, c0, c1, k):
+    # 8 nodes : ramp of the height from c0 to c1, gate, height above c0, weighted by the ramp and the gate, times k, subtracted. Compresses the highest tones and keeps their order. FR : compresse les hautes teintes sans les aplatir.
+    m = T.smooth(net, tag + '_ramp', h, c0, c1, 0.0, 1.0)
+    g = T.mix(net, tag + '_gated', m, gate, 5)
+    c = T.const(net, tag + '_knee', h, c0)
+    d = T.mix(net, tag + '_above', h, c, 4)
+    dm = T.mix(net, tag + '_weighted', d, g, 5)
+    kk = T.const(net, tag + '_amount', h, k)
+    dk = T.mix(net, tag + '_scaled', dm, kk, 5)
+    return T.mix(net, tag + '_apply', h, dk, 4)
+def opening(net, tag, h, face, dark0, dark1, blur, big0, big1):
+    # 10 October 2026 : morphological opening of the dark part of the height. EN: 8 nodes : drop (face minus height), dark mask (smooth), blur of the dark mask, large-dark mask (smooth), dark times large, small dark = dark minus dark times large, fill amount = small dark times drop, add. Dark specks smaller than the blur radius are filled up to the paint face ; large peels are kept. FR : ouverture morphologique, retire les petites taches sombres et garde les grandes ecailles.
+    dd = T.mix(net, tag + '_drop', face, h, 4)
+    dm = T.smooth(net, tag + '_dark', dd, dark0, dark1, 0.0, 1.0)
+    bl = T.node(net, 'blur', tag + '_blur', [dm], size=blur, filter=1)
+    big = T.smooth(net, tag + '_large', bl, big0, big1, 0.0, 1.0)
+    dmb = T.mix(net, tag + '_dark_times_large', dm, big, 5)
+    sp = T.mix(net, tag + '_small_dark', dm, dmb, 4)
+    spd = T.mix(net, tag + '_fill_amount', sp, dd, 5)
+    return T.mix(net, tag + '_apply', h, spd, 3)
+def lighten(net, tag, h, face, dark0, dark1, blur, big0, big1, k):
+    # 10 October 2026 : partial fill of the large dark peels: they keep their ragged shape, their depth falls by the fraction k. EN: 8 nodes : drop (face minus height), dark mask (smooth), blur of the dark mask, large-dark mask (smooth), dark times large, scaled by k (linear remap), drop times scaled, add. FR : les grandes ecailles gardent leur forme et perdent une part k de leur profondeur.
+    dd = T.mix(net, tag + '_drop', face, h, 4)
+    dm = T.smooth(net, tag + '_dark', dd, dark0, dark1, 0.0, 1.0)
+    bl = T.node(net, 'blur', tag + '_blur', [dm], size=blur, filter=1)
+    big = T.smooth(net, tag + '_large', bl, big0, big1, 0.0, 1.0)
+    dmb = T.mix(net, tag + '_dark_times_large', dm, big, 5)
+    amt = T.lin(net, tag + '_amount', dmb, 0.0, 1.0, 0.0, k)
+    spd = T.mix(net, tag + '_fill_amount', amt, dd, 5)
+    return T.mix(net, tag + '_apply', h, spd, 3)
+def inkedge(net, tag, h, face, dark0, dark1, blur, k):
+    # 10 October 2026 : dark ink just inside the edge of each large peel, so the peel edges read as crisp lines like the reference. EN: 8 nodes : drop (face minus height), dark mask (smooth), blur of the dark mask, inside edge = dark minus its blur, clamp to positive, scaled by k (linear remap), softened by a small blur, subtracted from the height. FR : liseré sombre a l'interieur du bord de chaque grande ecaille, bords nets.
+    dd = T.mix(net, tag + '_drop', face, h, 4)
+    dm = T.smooth(net, tag + '_dark', dd, dark0, dark1, 0.0, 1.0)
+    bl = T.node(net, 'blur', tag + '_blur', [dm], size=blur, filter=1)
+    df = T.mix(net, tag + '_inside_edge', dm, bl, 4)
+    ink = T.node(net, 'clamp', tag + '_ink', [df], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    amt = T.lin(net, tag + '_amount', ink, 0.0, 1.0, 0.0, k)
+    soft = T.node(net, 'blur', tag + '_soft', [amt], size=0.002, filter=1)
+    return T.mix(net, tag + '_apply', h, soft, 4)
+def openb(net, tag, h, face, bright0, bright1, blur, big0, big1):
+    # 10 October 2026 : bright twin of opening. It pulls bright leftovers (the rims of chips that were removed) down to the paint face, and keeps large bright lips. EN: 8 nodes : excess (height minus face), bright mask (smooth), blur of the bright mask, large-bright mask (smooth), bright times large, small bright = bright minus bright times large, fill amount = small bright times excess, subtract. FR : jumeau clair de l'ouverture, ramene vers la face les restes trop clairs.
+    dd = T.mix(net, tag + '_excess', h, face, 4)
+    dm = T.smooth(net, tag + '_bright', dd, bright0, bright1, 0.0, 1.0)
+    bl = T.node(net, 'blur', tag + '_blur', [dm], size=blur, filter=1)
+    big = T.smooth(net, tag + '_large', bl, big0, big1, 0.0, 1.0)
+    dmb = T.mix(net, tag + '_bright_times_large', dm, big, 5)
+    sp = T.mix(net, tag + '_small_bright', dm, dmb, 4)
+    spd = T.mix(net, tag + '_fill_amount', sp, dd, 5)
+    return T.mix(net, tag + '_apply', h, spd, 4)
+def ragband(net, tag, h, face, drive, dark0, dark1, blur, size, amp, k, off):
+    # 10 October 2026 : ragged dark fringe inside the edge of each peel. Fine noise multiplies the edge band, so the fringe is zero on the paint and jagged along the edge. EN: 8 nodes : drop (face minus height), dark mask (smooth), blur of the dark mask, edge band (dark minus blur), fine noise, band times noise, scaled to k (smooth remap 0 to 0.3 becomes 0 to k), subtracted from the height. FR : liseré irregulier a l'interieur du bord de chaque ecaille ; zero sur la peinture.
+    dd = T.mix(net, tag + '_drop', face, h, 4)
+    dm = T.smooth(net, tag + '_dark', dd, dark0, dark1, 0.0, 1.0)
+    bl = T.node(net, 'blur', tag + '_blur', [dm], size=blur, filter=1)
+    edge_band = T.mix(net, tag + '_edge_band', dm, bl, 4)
+    nz = T.node(net, 'fractalnoise', tag + '_noise', [drive], amp=amp, center=0.0, elementsize=size, elementsizetype=1, elementscalex=1.0, elementscaley=1.0, offx=off)
+    band = T.mix(net, tag + '_band_times_noise', edge_band, nz, 5)
+    scaled = T.smooth(net, tag + '_scaled', band, 0.0, 0.3, 0.0, k)
+    return T.mix(net, tag + '_apply', h, scaled, 4)
+def streak(net, tag, h, size, k):
+    # 10 October 2026 : anisotropic softening. A vertical streak blur removes the mottled variation along the fibres and keeps the fine vertical fibres, unlike the isotropic blur of soften. EN: 5 nodes : vertical streak blur (angle 90), detail = height minus blur, detail times k (const), scaled, subtracted. FR : adoucit le mouchetis vertical et garde les fibres verticales.
+    b = T.node(net, 'streakblur', tag + '_vblur', [h], angle=90.0, length=size, dirtype=0)
+    d = T.mix(net, tag + '_detail', h, b, 4)
+    c = T.mix(net, tag + '_scaled', d, T.const(net, tag + '_k', h, k), 5)
+    return T.mix(net, tag + '_apply', h, c, 4)
+def edge(net, tag, xs, w):
+    # 3 nodes : left edge, right edge, union. FR : bords gauche et droit.
+    l = T.smooth(net, tag + '_left', xs, w, 0.0, 0.0, 1.0)
+    r = T.smooth(net, tag + '_right', xs, 1.0 - w, 1.0, 0.0, 1.0)
+    return T.mix(net, tag + '_union', l, r, 12)
+def ring(net, tag, h, xs, ys, kx, ky, rpx, k, amp, mode, N=1254.0):
+    # 8 nodes : dx, dy, radius, sine of the radius, ring 0..1, envelope, term, combine. FR : anneaux de nœud.
+    dx = T.lin(net, tag + '_dx', xs, kx - 0.5, kx + 0.5, -1.0, 1.0)
+    dy = T.lin(net, tag + '_dy', ys, ky - 0.5, ky + 0.5, -1.0, 1.0)
+    rad = T.mix(net, tag + '_radius', dx, dy, 8)
+    sn = T.node(net, 'function', tag + '_sin', [rad], func=2, func_trig=0, scale=k, shift=0.0)
+    rg = T.lin(net, tag + '_ring01', sn, -1.0, 1.0, 0.0, 1.0)
+    R = 2.0 * rpx / N
+    env = T.smooth(net, tag + '_envelope', rad, R * 0.9, R * 1.1, amp, 0.0)
+    term = T.mix(net, tag + '_term', rg, env, 5)
+    return T.mix(net, tag + '_apply', h, term, mode)
+def rim(net, tag, h, mask, size, mode, inside=False):
+    # 4 nodes : blur of the mask, difference (blur minus mask = just outside the edge, mask minus blur = just inside), clamp, combine. FR : liseré clair dehors, ombre dedans.
+    b = T.node(net, tag + '_blur', [mask], size=size, filter=1) if False else T.node(net, 'blur', tag + '_blur', [mask], size=size, filter=1)
+    d = T.mix(net, tag + '_diff', mask, b, 4) if inside else T.mix(net, tag + '_diff', b, mask, 4)
+    c = T.node(net, 'clamp', tag + '_positive', [d], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    return T.mix(net, tag + '_apply', h, c, mode)
+def run(net, h, ctx, spec, label):
+    # spec items : ('blob', name, region, size, sx, sy, off, t0, t1, amp, mode) ; region is a ctx key, an edge name, or '@name' for a mask stored by an earlier blob
+    #              ('line', name, size, sx, sy, off, width, amp, mode) ; ('edge', name, xs_key, w) ; ('rim', name, mask_tag, size, mode) ; ('ring', name, kx, ky, rpx, k, amp, mode)
+    before = len(net.children())
+    edges = {}
+    for s_ in spec:
+        kind, name = s_[0], label + '_' + s_[1]
+        if kind == 'edge':
+            edges[s_[1]] = edge(net, name, ctx[s_[2]], s_[3])
+        elif kind == 'blob':
+            ref = s_[2]
+            if ref.startswith('@'): region = MASKS[ref[1:]]     # full tag of an earlier mask
+            elif ref in edges: region = edges[ref]
+            else: region = ctx[ref]
+            h = blob(net, name, h, ctx['t'], region, *s_[3:])
+        elif kind == 'line':
+            h = line(net, name, h, ctx['t'], *s_[2:])
+        elif kind == 'rim':
+            h = rim(net, name, h, MASKS[s_[2]] if s_[2] in MASKS else ctx[s_[2]], s_[3], s_[4], *(s_[5:6] or [False]))
+        elif kind == 'seam':
+            gate = MASKS[s_[2][1:]] if s_[2].startswith('@') else ctx[s_[2]]
+            h = seam(net, name, h, ctx['xs'], gate, *s_[3:])
+        elif kind == 'soft':
+            h = soften(net, name, h, s_[2], s_[3])
+        elif kind == 'grow':
+            gate = MASKS[s_[2][1:]] if s_[2].startswith('@') else ctx[s_[2]]
+            h = grow(net, name, h, ctx['chipmask'], gate, *s_[3:])
+        elif kind == 'open':
+            h = opening(net, name, h, ctx['face'], *s_[2:7])
+        elif kind == 'lighten':
+            h = lighten(net, name, h, ctx['face'], *s_[2:8])
+        elif kind == 'inkedge':
+            h = inkedge(net, name, h, ctx['face'], *s_[2:6])
+        elif kind == 'openb':
+            h = openb(net, name, h, ctx['face'], *s_[2:7])
+        elif kind == 'ragband':
+            h = ragband(net, name, h, ctx['face'], ctx['t'], *s_[2:9])
+        elif kind == 'streak':
+            h = streak(net, name, h, s_[2], s_[3])
+        elif kind == 'fill':
+            gate = MASKS[s_[2][1:]] if s_[2].startswith('@') else ctx[s_[2]]
+            h = fill(net, name, h, ctx['t'], gate, *s_[3:9], ctx[s_[9]])
+        elif kind == 'knee':
+            gate = MASKS[s_[2][1:]] if s_[2].startswith('@') else ctx[s_[2]]
+            h = knee(net, name, h, gate, *s_[3:])
+        elif kind == 'lineg':
+            gate = MASKS[s_[2][1:]] if s_[2].startswith('@') else ctx[s_[2]]
+            h = lineg(net, name, h, ctx['t'], gate, *s_[3:])
+        elif kind == 'rimin':
+            h = rim(net, name, h, MASKS[s_[2]] if s_[2] in MASKS else ctx[s_[2]], s_[3], s_[4], True)
+        elif kind == 'ring':
+            h = ring(net, name, h, ctx['xs'], ctx['ys'], *s_[2:8])
+        else:
+            raise ValueError(kind)
+    added = len(net.children()) - before
+    assert added == ITER_NODES, 'iteration %s added %d nodes, expected %d' % (label, added, ITER_NODES)
+    return h
+def label_tag(label, name):
+    return label + '_' + name

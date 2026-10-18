@@ -1,0 +1,53 @@
+# 11 October 2026 : probes the Copernicus node types and parameter names used by SimpleHeight, so no builder guesses a name.
+# EN: run with hython; writes measures/probe_cop.json next to this folder.
+# FR : sonde les types COP et leurs paramètres, pour que aucun constructeur ne devine un nom.
+import hou
+import json
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.path.join(HERE, '..', 'measures', 'probe_cop.json')
+
+TYPES = ['constant', 'ramp', 'remap', 'blend', 'function', 'fractalnoise', 'streakblur', 'blur',
+         'channelextract', 'monotorgb', 'heighttonormal', 'heighttoambientocclusion', 'turingpatterns',
+         'worleynoise', 'distort', 'mirror', 'tilepattern', 'edgedetect', 'clamp', 'null', 'output',
+         'composite', 'hsv', 'mono', 'rop_image', 'voronoi', 'noise', 'grunge', 'kuwahara', 'sharpen',
+         'levels', 'transform', 'mask', 'merge', 'copy', 'shapescatter', 'line', 'circle']
+
+
+def parm_info(p):
+    # 11 October 2026 : value and menu items only, enough to pick the right name and default. FR : valeur et menu.
+    pt = p.parmTemplate()
+    info = {'type': str(pt.type()).split('.')[-1]}
+    try:
+        v = p.eval()
+    except Exception:
+        v = None
+    # 11 October 2026 : ramps and other objects are written as their type name. FR : rampes écrites par leur type.
+    info['value'] = v if isinstance(v, (int, float, str)) or v is None else type(v).__name__
+    try:
+        items = list(pt.menuItems())
+        if items:
+            info['menu'] = items[:16]
+    except Exception:
+        pass
+    return info
+
+
+hou.hipFile.clear()
+net = hou.node('/obj').createNode('copnet', 'Probe')
+report = {'missing': [], 'nodes': {}}
+for t in TYPES:
+    try:
+        n = net.createNode(t, 'p_' + t)
+    except hou.OperationFailed:
+        report['missing'].append(t)
+        continue
+    report['nodes'][t] = {'inputs': n.type().maxNumInputs(),
+                          'parms': {p.name(): parm_info(p) for p in n.parms()}}
+
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+with open(OUT, 'w', encoding='utf-8') as fh:
+    json.dump(report, fh, indent=1, ensure_ascii=False)
+print('missing:', report['missing'])
+print('found:', sorted(report['nodes']))

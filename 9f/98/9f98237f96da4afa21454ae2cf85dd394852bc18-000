@@ -1,0 +1,180 @@
+# 10 October 2026 : one full board as a PNG: sixteen methods by four passes. Each row shows the reference and the passes P1 to P4; each tile carries the light and dark shares of three regions, coloured against the reference targets. EN. FR : planche complete, seize methodes par quatre passes.
+import json
+import os
+import sys
+import textwrap
+
+from PIL import Image, ImageDraw, ImageFont
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import MaskMeasure as MM  # noqa: E402
+import PassLoop as PL  # noqa: E402
+
+BASE = MM.BASE
+VERS = BASE + 'versions/window/'
+PASSES = BASE + 'measures/passes.jsonl'
+OUT = VERS + 'planche_16x4_serie_v4.png'
+
+METHODS = [
+    ('M01', "Masques d'abord, union par max", 'Flocons partout, pas de concentration sur le haut.'),
+    ('M02', 'Union absolue max ou min', 'Taches éparses, contraste faible.'),
+    ('M03', 'Trois tons, niveaux fixes', 'Taches claires éparses, sans dégradé.'),
+    ('M04', 'Champs de distance additifs', 'Gris presque uniforme, contraste faible.'),
+    ('M05', 'Profil mesuré × masques (multiplication)', 'Poivre et sel, contraste excessif.'),
+    ('M06', 'Cellules de pelage', 'Éclats anguleux, forme la plus proche, répartis partout.'),
+    ('M07', 'Éclats Worley seuillés', 'Grain fin, presque plat : couverture trop faible.'),
+    ('M08', 'Motifs de Turing', 'Grandes courbes, échelle fausse (32 familles au plus).'),
+    ('M09', 'Éclats étirés (streakblur)', 'Lambeaux proches des écailles, répartis sur les lames.'),
+    ('M10', 'Distance Eikonal', 'Inerte : la même image à chaque passe.'),
+    ('M11', 'Bandes de fréquence', 'Taches grossières puis grain, pas de concentration.'),
+    ('M12', 'Empilement des masques', 'Grain uniforme, faible contraste.'),
+    ('M13', 'Gonflement planaire', 'Inerte : sortie nulle, aucun relief.'),
+    ('M14', "Appariement d'histogramme", 'Grain dense, sombre et clair, sans concentration.'),
+    ('M15', 'Formes SDF (rectangles)', 'Grands arcs, échelle fausse, carré vide.'),
+    ('M16', 'Tuiles et lames', 'Grain dense, clair sur tout le canevas, rangées peu lisibles.'),
+]
+
+TILE, GAP, MARGIN, W_LABEL = 214, 12, 26, 330
+HEADER_H, ROW_H, FOOTER_H = 150, 300, 150
+COLS = 5  # reference, then P1 to P4
+WIDTH = MARGIN * 2 + W_LABEL + COLS * TILE + (COLS - 1) * GAP + 20
+HEIGHT = HEADER_H + len(METHODS) * ROW_H + FOOTER_H
+BG, LINE = (24, 24, 26), (58, 58, 64)
+TXT, SUB, VERDICT = (232, 232, 236), (150, 150, 160), (196, 196, 202)
+GOOD, NEAR, FAR = (120, 215, 140), (240, 190, 90), (240, 105, 105)
+FONT_PATHS = [
+    '/System/Library/Fonts/Supplemental/Arial.ttf',
+    '/System/Library/Fonts/Helvetica.ttc',
+    '/Library/Fonts/Arial.ttf',
+]
+STAT_ROWS = [('haut', 'top'), ('lames', 'lames'), ('carré', 'carre')]
+
+
+def font(size):
+    # 10 October 2026 : first readable face found, Pillow's default otherwise. EN. FR : police lisible.
+    for path in FONT_PATHS:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except OSError:
+                pass
+    return ImageFont.load_default(size=size)
+
+
+def fr(value, digits=2):
+    # 10 October 2026 : French decimal comma. EN. FR : virgule décimale.
+    return f'{value:.{digits}f}'.replace('.', ',')
+
+
+def colour_for(value, target):
+    # 10 October 2026 : green within 0.03 of the target, amber within 0.08, red beyond. EN. FR : vert, orange, rouge.
+    dev = abs(value - target)
+    if dev <= 0.03:
+        return GOOD
+    if dev <= 0.08:
+        return NEAR
+    return FAR
+
+
+def load_tile(path):
+    im = Image.open(path).convert('L').resize((TILE, TILE), Image.LANCZOS)
+    return im.convert('RGB')
+
+
+def draw_stats(draw, x, y, values, targets, f_label, f_num, show_targets):
+    # 10 October 2026 : light and dark share of the three regions under a tile. EN. FR : fractions sous la vignette.
+    for i, (label, key) in enumerate(STAT_ROWS):
+        yy = y + i * 22
+        draw.text((x, yy + 2), label, font=f_label, fill=SUB)
+        cx = x + 62
+        for name in ('L', 'D'):
+            val = values[key][name]
+            col = SUB if show_targets else colour_for(val, targets[key][name])
+            draw.text((cx, yy), f'{name} {fr(val, 3)}', font=f_num, fill=col)
+            cx += 74
+
+
+def draw_label(draw, x, y0, mid, name, meta, verdict, fonts):
+    # 10 October 2026 : method identifier, name, size and timing, then the reading by eye. EN. FR : étiquette de ligne.
+    y = y0 + 12
+    draw.text((x, y), mid, font=fonts['id'], fill=TXT)
+    y += 34
+    for line in textwrap.wrap(name, 34):
+        draw.text((x, y), line, font=fonts['name'], fill=TXT)
+        y += 22
+    y += 6
+    draw.text((x, y), meta, font=fonts['meta'], fill=SUB)
+    y += 24
+    for line in textwrap.wrap(verdict, 40):
+        draw.text((x, y), line, font=fonts['verdict'], fill=VERDICT)
+        y += 20
+
+
+def main():
+    hi, lo, targets = PL.reference_targets()
+    size = MM.load_size()
+    regs = MM.region_masks(size[1], size[0])
+
+    def fractions(png):
+        a = MM.load(png, size)
+        return {r: {'L': float((a[m] > hi).mean()), 'D': float((a[m] < lo).mean())} for r, m in regs.items()}
+
+    recs = {}
+    for line in open(PASSES):
+        r = json.loads(line)
+        if r.get('series') == 'v4' and r.get('status') == 'ok':
+            recs[(r['method'], r['phase'])] = r
+
+    fonts = {'title': font(30), 'sub': font(17), 'head': font(18), 'id': font(24), 'name': font(18),
+             'meta': font(15), 'verdict': font(16), 'f_label': font(15), 'f_num': font(17), 'foot': font(15)}
+    canvas = Image.new('RGB', (WIDTH, HEIGHT), BG)
+    draw = ImageDraw.Draw(canvas)
+    draw.text((MARGIN, 16), 'Louisiana Bayou, fenêtre : seize méthodes × quatre passes (série v4)', font=fonts['title'], fill=TXT)
+    draw.text((MARGIN, 60), 'Seuils absolus issus de la référence : clair au-dessus de 0,580, sombre au-dessous de 0,275.', font=fonts['sub'], fill=SUB)
+    draw.text((MARGIN, 84), 'Cibles de la référence (clair / sombre) : haut 0,335 / 0,149 · lames 0,204 / 0,308 · carré 0,356 / 0,073.', font=fonts['sub'], fill=SUB)
+    draw.text((MARGIN, HEADER_H - 30), 'Méthode, familles, recalcul, verdict', font=fonts['head'], fill=TXT)
+    for k, title in enumerate(['Référence', 'P1 uniforme', 'P2', 'P3', 'P4']):
+        draw.text((MARGIN + W_LABEL + k * (TILE + GAP), HEADER_H - 30), title, font=fonts['head'], fill=TXT)
+
+    ref_tile = load_tile(MM.REF)
+    for i, (mid, name, verdict) in enumerate(METHODS):
+        y0 = HEADER_H + i * ROW_H
+        p2 = recs[(mid, 2)]
+        cooks = [recs[(mid, p)]['cook_s'] for p in (2, 3, 4) if (mid, p) in recs]
+        meta = f"{p2['families']} fam. · {p2['nodes']} nodes · {fr(min(cooks), 1)} à {fr(max(cooks), 1)} s"
+        draw_label(draw, MARGIN, y0, mid, name, meta, verdict, fonts)
+
+        x = MARGIN + W_LABEL
+        canvas.paste(ref_tile, (x, y0 + 10))
+        draw.rectangle([x - 1, y0 + 9, x + TILE, y0 + 10 + TILE], outline=LINE)
+        draw_stats(draw, x + 2, y0 + 10 + TILE + 6, targets, targets, fonts['f_label'], fonts['f_num'], True)
+
+        for k in range(1, 5):
+            x = MARGIN + W_LABEL + k * (TILE + GAP)
+            png = VERS + mid + '/P%d.png' % k
+            draw.rectangle([x - 1, y0 + 9, x + TILE, y0 + 10 + TILE], outline=LINE)
+            if os.path.exists(png):
+                canvas.paste(load_tile(png), (x, y0 + 10))
+                draw_stats(draw, x + 2, y0 + 10 + TILE + 6, fractions(png), targets, fonts['f_label'], fonts['f_num'], False)
+            else:
+                draw.rectangle([x, y0 + 10, x + TILE - 1, y0 + 9 + TILE], fill=(60, 20, 20))
+                draw.text((x + 10, y0 + 20), f'{mid} P{k} absente', font=fonts['meta'], fill=FAR)
+        draw.line([(MARGIN, y0 + ROW_H - 1), (WIDTH - MARGIN, y0 + ROW_H - 1)], fill=LINE)
+
+    fy = HEADER_H + len(METHODS) * ROW_H + 14
+    notes = [
+        'Clair (L) : part des pixels de la région au-dessus de 0,580. Sombre (D) : part au-dessous de 0,275.',
+        'Couleur : vert à 0,03 près de la cible, orange à 0,08 près, rouge au-delà. Les cibles sont celles de la référence.',
+        'P1 est la passe uniforme, identique en v3 et v4. M10 et M13 sont inertes : la même image à chaque passe.',
+        "Les verdicts sont une lecture à l'œil sur planches en contact. Données : measures/passes.jsonl (série v4).",
+    ]
+    for j, line in enumerate(notes):
+        draw.text((MARGIN, fy + j * 22), line, font=fonts['foot'], fill=SUB)
+    canvas.save(OUT, optimize=True)
+    print(OUT, canvas.size, os.path.getsize(OUT))
+
+
+if __name__ == '__main__':
+    main()

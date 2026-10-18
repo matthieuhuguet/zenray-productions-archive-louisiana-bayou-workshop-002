@@ -1,0 +1,333 @@
+# 10 October 2026 : one HTML board for the three retained methods (M01, M11, M14) by eight passes. Each cell carries its context sheet, a field for the eye verdict, and opens the full render in a viewer with zoom, arrow keys and a side-by-side view against the reference. EN. FR : planche HTML 3 méthodes × 8 passes, fiches et avis.
+import html
+import json
+import os
+import sys
+
+from PIL import Image
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import MaskMeasure as MM  # noqa: E402
+import PassLoop as PL  # noqa: E402
+
+VERS = PL.VERS
+THUMBS = VERS + 'thumbs/'
+FICHES = MM.MEASURES + 'fiches/'
+OUT = VERS + 'planche_3x8_M01_M11_M14.html'
+REF_FULL_REL = '../../refs/window_height_ref.png'  # 10 October 2026 : relative to versions/window/. FR : chemin relatif.
+THUMB_PX = 640
+METHODS = [
+    ('M01', "Masques d'abord, union par max",
+     "Avis de Matthieu (10 October 2026) : parmi les meilleures, encore loin du résultat ; elle a peu varié entre P1 et P4."),
+    ('M11', 'Bandes de fréquence',
+     "Avis de Matthieu (10 October 2026) : parmi les meilleures, encore loin du résultat."),
+    ('M14', "Appariement d'histogramme",
+     "Avis de Matthieu (10 October 2026) : intelligente, quasi pas mal, mais il ne sait pas encore."),
+]
+NAMES = {'M01': METHODS[0][1], 'M11': METHODS[1][1], 'M14': METHODS[2][1]}
+
+
+def make_thumb(src, dst):
+    # 10 October 2026 : 640 px grayscale JPEG for the grid; the viewer loads the full PNG. EN. FR : vignette 640 px.
+    im = Image.open(src).convert('L').resize((THUMB_PX, THUMB_PX), Image.LANCZOS)
+    im.save(dst, quality=90)
+
+
+def fmt(value):
+    return f'{value:.3f}'.replace('.', ',')
+
+
+def signed(value):
+    return f'{value:+.3f}'.replace('.', ',')
+
+
+def fmt1(value):
+    return f'{value:.1f}'.replace('.', ',')
+
+
+def cls(value, target):
+    # 10 October 2026 : green within 0.03 of the target, amber within 0.08, red beyond. EN. FR : vert, orange, rouge.
+    dev = abs(value - target)
+    if dev <= 0.03:
+        return 'good'
+    if dev <= 0.08:
+        return 'near'
+    return 'far'
+
+
+def stat_lines(fm, targets, t_conc, is_ref):
+    out = []
+    for label, key in (('haut', 'top'), ('lames', 'lames'), ('carré', 'carre')):
+        vl, vd = fm[key]['L'], fm[key]['D']
+        cl = 'ref' if is_ref else cls(vl, targets[key]['L'])
+        cd = 'ref' if is_ref else cls(vd, targets[key]['D'])
+        out.append(f'<div class="ln"><span class="lab">{label}</span><span class="v {cl}">L {fmt(vl)}</span><span class="v {cd}">D {fmt(vd)}</span></div>')
+    conc_l = fm['top']['L'] - fm['lames']['L']
+    conc_d = fm['top']['D'] - fm['lames']['D']
+    cl = 'ref' if is_ref else cls(conc_l, t_conc[0])
+    cd = 'ref' if is_ref else cls(conc_d, t_conc[1])
+    out.append(f'<div class="ln conc"><span class="lab">conc.</span><span class="v {cl}">L {signed(conc_l)}</span><span class="v {cd}">D {signed(conc_d)}</span></div>')
+    return ''.join(out)
+
+
+def info_text(fm, targets, t_conc):
+    parts = []
+    for label, key in (('haut', 'top'), ('lames', 'lames'), ('carré', 'carre')):
+        parts.append(f"{label} L {fmt(fm[key]['L'])} (cible {fmt(targets[key]['L'])}), D {fmt(fm[key]['D'])} (cible {fmt(targets[key]['D'])})")
+    conc_l = fm['top']['L'] - fm['lames']['L']
+    conc_d = fm['top']['D'] - fm['lames']['D']
+    parts.append(f"concentration {signed(conc_l)} / {signed(conc_d)} (cible {signed(t_conc[0])} / {signed(t_conc[1])})")
+    return ' | '.join(parts)
+
+
+def context_html(f):
+    # 10 October 2026 : the context sheet of one pass, as readable lines. EN. FR : contexte de la passe.
+    n = f['N']
+    cov = f['couverture_utilisee']
+    prev = f['couverture_precedente']
+    prev_txt = (f"P {prev['top']['P']:.3f} / H {prev['top']['H']:.3f}".replace('.', ',')) if prev else 'aucune (passe 1)'
+    lines = [
+        f"Passe P{f['passe']} · {html.escape(str(f['date']))} · série {html.escape(str(f['serie']))}",
+        f"N : {n['familles']} familles, {n['nodes']} nodes ; construction {fmt1(n['construction_s'])} s, recalcul {fmt1(n['recalcul_s'])} s",
+        f"Finition : lèvre {f['finition']['lip_w']}, peinture {f['finition']['paint_amp']}, trou {f['finition']['hole_amp']}",
+        f"Couverture utilisée, haut : P {cov['top']['P']:.3f} / H {cov['top']['H']:.3f}".replace('.', ','),
+        f"Couverture précédente, haut : {prev_txt}",
+        f"Contrôleur : {html.escape(f['controleur'])}",
+        f"Fichiers : PNG {html.escape(f['fichiers']['png'])}",
+        f"Spec : {html.escape(f['fichiers']['spec'])}",
+        f"Masques : {html.escape(f['fichiers']['masques'])}",
+    ]
+    return ''.join(f'<div>{line}</div>' for line in lines)
+
+
+# 10 October 2026, 22:53 : header of the three comparison rows placed above the grid. EN. FR : en-tête des trois lignes de comparaison, au-dessus de la grille.
+COMPARE_HEAD = ('<section class="row compare head"><div class="label hd">Comparaison</div>'
+                '<div class="hd">Gauche : référence de hauteur</div><div class="hd">Droite : passe 8</div></section>')
+
+
+def compare_row(mid, name, ref_idx, p8_idx):
+    # 10 October 2026, 22:53 : one method, reference on the left, its final pass 8 on the right; both open the viewer. EN. FR : une méthode, référence à gauche, passe 8 à droite.
+    return (f'<section class="row compare"><div class="label"><div class="id">{mid}</div>'
+            f'<div class="name">{html.escape(name)}</div></div>'
+            f'<figure><img src="thumbs/reference.jpg" data-idx="{ref_idx}" alt="Référence de hauteur" loading="lazy">'
+            f'<figcaption>Référence de hauteur</figcaption></figure>'
+            f'<figure><img src="thumbs/{mid}_P8.jpg" data-idx="{p8_idx}" alt="{mid}, passe 8" loading="lazy">'
+            f'<figcaption>{mid}, passe 8</figcaption></figure></section>')
+
+
+def main():
+    hi, lo, targets = PL.reference_targets()
+    t_conc = (targets['top']['L'] - targets['lames']['L'], targets['top']['D'] - targets['lames']['D'])
+    os.makedirs(THUMBS, exist_ok=True)
+    make_thumb(MM.REF, THUMBS + 'reference.jpg')
+    items = []
+    rows = []
+    ref_idx = None  # 10 October 2026, 22:53 : lightbox index of the reference, shared by the comparison rows. EN. FR : index de la référence pour la comparaison.
+    p8_items = {}  # 10 October 2026, 22:53 : lightbox index of each method's pass 8. EN. FR : index de la passe 8 de chaque méthode.
+    head = ('<section class="row head"><div class="label hd">Méthode</div>'
+            '<div class="hd">Référence (cibles)</div>' +
+            ''.join(f'<div class="hd">P{k}</div>' for k in range(1, 9)) + '</section>')
+
+    def figure(thumb_rel, full_rel, title, fm, is_ref, fiche, fid):
+        idx = len(items)
+        items.append({'src': full_rel, 'title': title, 'info': info_text(fm, targets, t_conc), 'isRef': is_ref})
+        ctx = '' if is_ref else (f'<details><summary>contexte de la passe</summary>{context_html(fiche)}</details>'
+                                 f'<textarea data-avis="{fid}" placeholder="ton avis à l\'œil sur cette passe"></textarea>')
+        return (f'<figure><img src="{thumb_rel}" data-idx="{idx}" alt="{html.escape(title)}" loading="lazy">'
+                f'<figcaption>{stat_lines(fm, targets, t_conc, is_ref)}</figcaption>{ctx}</figure>')
+
+    for mid, name, verdict in METHODS:
+        cells = [figure('thumbs/reference.jpg', REF_FULL_REL, f'{mid} · Référence (cibles)', targets, True, None, None)]
+        if ref_idx is None:
+            ref_idx = len(items) - 1
+        meta_parts = []
+        recul = []
+        fams = []
+        for k in range(1, 9):
+            fid = f'{mid}_P{k}'
+            fiche = json.load(open(FICHES + fid + '.json', encoding='utf-8'))
+            thumb_rel = f'thumbs/{fid}.jpg'
+            png_rel = f'{mid}/P{k}.png'
+            make_thumb(VERS + png_rel, VERS + thumb_rel)
+            recul.append(fiche['N']['recalcul_s'])
+            fams.append(fiche['N']['familles'])
+            cells.append(figure(thumb_rel, png_rel, f'{mid} · P{k} · {name}', fiche['fractions_mesurees'], False, fiche, fid))
+            if k == 8:
+                p8_items[mid] = len(items) - 1
+        meta = f"P1 à P4 : {fams[0]} fam. ; P5 à P8 : {fams[-1]} fam. · recalcul {fmt1(min(recul))} à {fmt1(max(recul))} s"
+        label = (f'<div class="label"><div class="id">{mid}</div><div class="name">{html.escape(name)}</div>'
+                 f'<div class="meta">{html.escape(meta)}</div><div class="verdict">{html.escape(verdict)}</div></div>')
+        rows.append(f'<section class="row">{label}{"".join(cells)}</section>')
+
+    compare = ''.join(compare_row(mid, name, ref_idx, p8_items[mid]) for mid, name, _ in METHODS)
+    page = (PAGE.replace('__ROWS__', COMPARE_HEAD + compare + head + '\n'.join(rows))
+                .replace('__ITEMS__', json.dumps(items, ensure_ascii=False)))
+    with open(OUT, 'w', encoding='utf-8') as fh:
+        fh.write(page)
+    print(OUT, os.path.getsize(OUT), 'bytes,', len(items), 'items')
+
+
+PAGE = '''<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Louisiana Bayou : M01, M11, M14 × huit passes</title>
+<style>
+:root { --tile: 176px; --bg: #18181b; --panel: #1f1f24; --line: #3a3a41; --txt: #e8e8ec; --sub: #9a9aa6;
+        --good: #78d78f; --near: #f0be5a; --far: #f06969; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--txt); font: 14px/1.4 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 20px; }
+h1 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+.targets { color: var(--sub); font-size: 13px; }
+.notes { color: #c9c9d1; font-size: 13px; margin-top: 6px; }
+.controls { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; color: var(--sub); font-size: 13px; }
+.controls input[type=range] { width: 200px; vertical-align: middle; }
+.grid { padding: 8px 20px 48px; }
+.row { display: grid; grid-template-columns: 280px repeat(9, var(--tile)); gap: 10px; border-bottom: 1px solid var(--line); padding: 12px 0; align-items: start; }
+.row.head { padding: 8px 0; border-bottom: 2px solid var(--line); }
+.hd { color: var(--txt); font-weight: 600; font-size: 13px; }
+.label .id { font-size: 22px; font-weight: 600; }
+.label .name { font-size: 15px; margin-top: 2px; }
+.label .meta { color: var(--sub); font-size: 12px; margin-top: 6px; }
+.label .verdict { color: #c4c4cc; font-size: 13px; margin-top: 8px; }
+figure { margin: 0; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); cursor: zoom-in; background: #000; }
+figcaption { margin-top: 5px; font-size: 12px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.ln { display: flex; gap: 6px; white-space: nowrap; }
+.lab { width: 46px; color: var(--sub); flex: none; }
+.v { width: 60px; flex: none; }
+.ln.conc { margin-top: 2px; padding-top: 2px; border-top: 1px dashed var(--line); }
+.good { color: var(--good); } .near { color: var(--near); } .far { color: var(--far); } .ref { color: var(--sub); }
+details { margin-top: 5px; font-size: 11px; color: var(--sub); }
+details summary { cursor: pointer; color: #b5b5c0; }
+details > div { margin-top: 3px; line-height: 1.45; word-break: break-all; }
+textarea { width: 100%; min-height: 52px; margin-top: 5px; background: #111116; color: var(--txt); border: 1px solid var(--line); border-radius: 4px; font: 12px/1.4 -apple-system, Arial, sans-serif; padding: 4px; resize: vertical; }
+.row.compare { grid-template-columns: 280px repeat(2, minmax(0, 640px)); }
+.row.compare figure img { max-width: 640px; }
+@media (max-width: 900px) { .row.compare { grid-template-columns: 1fr 1fr; } .row.compare .label { grid-column: 1 / -1; } }
+#lb { position: fixed; inset: 0; background: rgba(8, 8, 10, 0.96); display: none; z-index: 20; flex-direction: column; }
+#lb.open { display: flex; }
+#lb .bar { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border-bottom: 1px solid var(--line); }
+#lb .title { font-size: 14px; flex: 1; min-width: 240px; }
+#lb button { background: #2a2a31; color: var(--txt); border: 1px solid #3d3d46; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+#lb button:hover { background: #34343d; }
+#lb .scroll { flex: 1; overflow: auto; padding: 12px; }
+#lb .pair { display: flex; gap: 12px; justify-content: center; align-items: flex-start; min-height: 100%; }
+#lb .pair img { display: block; border: 1px solid var(--line); background: #000; }
+#lb .info { font-size: 12px; color: var(--sub); padding: 8px 16px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Louisiana Bayou : M01, M11 et M14 × huit passes</h1>
+  <div class="targets">Seuils absolus issus de la référence : clair au-dessus de 0,580, sombre au-dessous de 0,275. Cibles (clair / sombre) : haut 0,335 / 0,149 · lames 0,204 / 0,308 · carré 0,356 / 0,073 · concentration +0,131 / −0,159.</div>
+  <div class="notes">P1 à P4 : passes existantes, 512 familles (4136 nodes). P5 à P8 : nouvelles passes, 768 familles (6184 nodes), recalcul sous 20 s. M14 : la courbe d'histogramme diverge (clair du haut 0,810 en P5, sombre du haut 0,888 en P8).</div>
+  <div class="controls">
+    <label>Taille des vignettes <input id="size" type="range" min="120" max="400" value="176"> <span id="sizeVal">176</span> px</label>
+    <span>Clic sur une vignette : pleine résolution (1254 px). Flèches : précédente et suivante. C : comparer avec la référence. + et − : zoom. 0 : ajuster. Échap : fermer. Les avis se gardent dans ce navigateur.</span>
+  </div>
+</header>
+<main class="grid">
+__ROWS__
+</main>
+<div id="lb">
+  <div class="bar">
+    <span class="title" id="lbTitle"></span>
+    <button id="prev">◀ précédente</button>
+    <button id="next">suivante ▶</button>
+    <button id="cmp">Comparer avec la référence (C)</button>
+    <button id="zm">moins</button>
+    <button id="z100">100 %</button>
+    <button id="zp">plus</button>
+    <button id="zfit">Ajuster (0)</button>
+    <button id="close">Fermer (Échap)</button>
+  </div>
+  <div class="scroll" id="scroll">
+    <div class="pair"><img id="full" alt=""><img id="refFull" alt="" hidden></div>
+  </div>
+  <div class="info" id="lbInfo"></div>
+</div>
+<script>
+const ITEMS = __ITEMS__;
+const REF_SRC = '../../refs/window_height_ref.png';
+const NATIVE = 1254;
+const lb = document.getElementById('lb');
+const full = document.getElementById('full');
+const refFull = document.getElementById('refFull');
+const scroll = document.getElementById('scroll');
+const title = document.getElementById('lbTitle');
+const info = document.getElementById('lbInfo');
+let cur = 0, zoom = 0, compare = false;
+
+function applySize() {
+  const avail = scroll.clientWidth - 40;
+  const item = ITEMS[cur];
+  const pair = compare && !item.isRef;
+  const base = pair ? Math.min(NATIVE, (avail - 12) / 2) : Math.min(NATIVE, avail);
+  const w = zoom === 0 ? base : NATIVE * zoom;
+  full.style.width = w + 'px';
+  refFull.style.width = w + 'px';
+}
+
+function show(i) {
+  cur = (i + ITEMS.length) % ITEMS.length;
+  const item = ITEMS[cur];
+  full.src = item.src;
+  refFull.src = REF_SRC;
+  refFull.hidden = !(compare && !item.isRef);
+  title.textContent = item.title;
+  info.textContent = item.info;
+  lb.classList.add('open');
+  scroll.scrollTop = 0;
+  scroll.scrollLeft = 0;
+  applySize();
+}
+
+function zoomIn() { zoom = Math.min(4, (zoom || 1) * 1.5); applySize(); }
+function zoomOut() { zoom = Math.max(0.25, (zoom || 1) / 1.5); applySize(); }
+function toggleCompare() { compare = !compare; show(cur); }
+
+document.querySelectorAll('img[data-idx]').forEach(el => {
+  el.addEventListener('click', () => show(parseInt(el.dataset.idx, 10)));
+});
+document.getElementById('close').onclick = () => lb.classList.remove('open');
+document.getElementById('prev').onclick = () => show(cur - 1);
+document.getElementById('next').onclick = () => show(cur + 1);
+document.getElementById('cmp').onclick = toggleCompare;
+document.getElementById('zm').onclick = zoomOut;
+document.getElementById('zp').onclick = zoomIn;
+document.getElementById('z100').onclick = () => { zoom = 1; applySize(); };
+document.getElementById('zfit').onclick = () => { zoom = 0; applySize(); };
+document.addEventListener('keydown', e => {
+  if (!lb.classList.contains('open')) return;
+  if (e.target && e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Escape') lb.classList.remove('open');
+  else if (e.key === 'ArrowRight') show(cur + 1);
+  else if (e.key === 'ArrowLeft') show(cur - 1);
+  else if (e.key === 'c' || e.key === 'C') toggleCompare();
+  else if (e.key === '+' || e.key === '=') zoomIn();
+  else if (e.key === '-') zoomOut();
+  else if (e.key === '0') { zoom = 0; applySize(); }
+});
+window.addEventListener('resize', () => { if (lb.classList.contains('open')) applySize(); });
+document.getElementById('size').oninput = e => {
+  document.documentElement.style.setProperty('--tile', e.target.value + 'px');
+  document.getElementById('sizeVal').textContent = e.target.value;
+};
+document.querySelectorAll('textarea[data-avis]').forEach(t => {
+  const key = 'avis_' + t.dataset.avis;
+  try { t.value = localStorage.getItem(key) || ''; } catch (err) { /* no storage: the field still works */ }
+  t.addEventListener('input', () => { try { localStorage.setItem(key, t.value); } catch (err) { /* ignored */ } });
+});
+</script>
+</body>
+</html>
+'''
+
+
+if __name__ == '__main__':
+    main()

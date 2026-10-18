@@ -1,0 +1,91 @@
+# 10 October 2026 : HEIGHT of ONE weathered wood roof tile, procedural for unlimited variations (the 36 slots of the sheet are 36 seeds, not 36 graphs). Real Copernicus nodes only, no copy of the reference. Sections : A layout (x, y), B tile silhouette (ragged bottom), C planks (split cracks, per plank level), D vertical grain, E knot, F bottom shadow, Z final. The seed drives positions only through build(seed=...). EN: the HDA interface is the dict P (8 parameters per category). FR : height d'UNE tuile, une graine donne une variante ; 36 graines = la planche 6 x 6.
+import hou, os, sys, json, random
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+T = HL.T
+# interface : SHAPE (8) then SURFACE (8). FR : interface courte, 8 par categorie.
+P = dict(
+    # SHAPE
+    tile_x0=0.105, tile_x1=0.930, tile_y0=0.105, tile_y1=0.930, bottom_ragged=0.060, bottom_len_var=0.045, crack_width=0.010, crack_count_max=3,
+    # SURFACE
+    plank_level=0.60, plank_level_var=0.06, grain_amp=0.22, grain_fine_amp=0.16, grain_sx=0.25, rough_amp=0.25, rough_size=0.008, fiss_amp=0.40, knot_amp=0.22, knot_radius=0.030, shadow_depth=0.45)
+def noise(net, name, src, amp, size, sx, off, sy=1.0):
+    return T.node(net, 'fractalnoise', name, [src], amp=amp, center=0.0, elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=sy, offx=off)
+def build(netname='H_RoofTile', res=418, params=None, seed=0):
+    p = dict(P); p.update(params or {})
+    rng = random.Random(1000 + seed)
+    ncr = rng.randint(1, int(p['crack_count_max']))
+    cx = sorted(rng.uniform(p['tile_x0'] + 0.20, p['tile_x1'] - 0.20) for _ in range(ncr))
+    for i in range(1, len(cx)):
+        if cx[i] - cx[i - 1] < 0.18: cx[i] = cx[i - 1] + 0.18
+    knot = rng.random() < 0.35
+    kx, ky = rng.uniform(p['tile_x0'] + 0.15, p['tile_x1'] - 0.15), rng.uniform(p['tile_y0'] + 0.15, p['tile_y1'] - 0.30)
+    off = seed * 7.13
+    net = HL.fresh_net(netname)
+    rx = T.node(net, 'ramp', 'A00_ramp__across_x', signature='f1', rotation=0.0, cycles=1.0, method=0)
+    ry = T.node(net, 'ramp', 'A01_ramp__down_y', signature='f1', rotation=90.0, cycles=1.0, method=0)
+    xs = T.lin(net, 'A02_x__s', rx, 0.0, 1.0)
+    ys = T.lin(net, 'A03_y__s', ry, 0.0, 1.0)
+    # B silhouette : left, right, top edges smooth, bottom edge ragged per seed. FR : silhouette, bord bas dechire.
+    e = 0.004
+    bl = T.smooth(net, 'B01_edge__left', xs, p['tile_x0'] - e, p['tile_x0'] + e)
+    br = T.smooth(net, 'B02_edge__right', xs, p['tile_x1'] + e, p['tile_x1'] - e)
+    bt = T.smooth(net, 'B03_edge__top', ys, p['tile_y0'] - e, p['tile_y0'] + e)
+    bn1 = noise(net, 'B04_bottom__teeth', xs, 1.0, 0.05, 1.0, 3.7 + off, 60.0)       # varies along x only (sy large). FR : ne varie que selon x.
+    bn2 = noise(net, 'B05_bottom__coarse', xs, 1.0, 0.20, 1.0, 9.9 + off, 60.0)
+    bn = T.mix(net, 'B06_bottom__sum', T.mix(net, 'B06a_teeth', bn1, T.const(net, 'B06b_const__teeth', xs, p['bottom_ragged'] * 4.0), 5), T.mix(net, 'B06c_coarse', bn2, T.const(net, 'B06d_const__coarse', xs, p['bottom_len_var'] * 4.0), 5), 3)
+    ybot = T.mix(net, 'B07_bottom__edge_y', T.const(net, 'B07a_const__y1', xs, p['tile_y1'] - 0.075), bn, 3)       # tile body ends here, shadow strip beneath
+    inside_b = T.smooth(net, 'B08_edge__bottom', T.mix(net, 'B08a_y_minus_edge', ys, ybot, 4), 0.004, -0.004)
+    body = T.mix(net, 'B09_tile__body', T.mix(net, 'B09a_lr', bl, br, 5), T.mix(net, 'B09b_tb', bt, inside_b, 5), 5)
+    # C planks : level steps at every crack, dark vertical crack (broken by a noise so it does not always run full height)
+    h = T.const(net, 'C00_level__base', xs, p['plank_level'])
+    for i, x in enumerate(cx):
+        step = T.smooth(net, 'C%02d_plank__step' % (i + 1), xs, x - 0.003, x + 0.003)
+        lvl = T.mix(net, 'C%02da_plank__level' % (i + 1), step, T.const(net, 'C%02db_const__var' % (i + 1), xs, rng.uniform(-1, 1) * p['plank_level_var']), 5)
+        h = T.mix(net, 'C%02dc_level__with_plank' % (i + 1), h, lvl, 3)
+        w = p['crack_width']
+        bump = T.mix(net, 'C%02dd_crack__bump' % (i + 1), T.smooth(net, 'C%02de_crack__l' % (i + 1), xs, x - w - 0.003, x - w + 0.003), T.smooth(net, 'C%02df_crack__r' % (i + 1), xs, x + w + 0.003, x + w - 0.003), 5)
+        brk = noise(net, 'C%02dg_crack__break' % (i + 1), ys, 1.0, 0.30, 1.0, 5.1 + i * 3.3 + off, 1.0)
+        brkm = T.smooth(net, 'C%02dh_crack__present' % (i + 1), brk, -0.20, 0.0)
+        cut = T.mix(net, 'C%02di_crack__cut' % (i + 1), bump, brkm, 5)
+        h = T.mix(net, 'C%02dj_height__with_crack' % (i + 1), h, T.mix(net, 'C%02dk_crack__depth' % (i + 1), cut, T.const(net, 'C%02dl_const__depth' % (i + 1), xs, 0.55), 5), 4)
+    # D vertical grain
+    g1 = noise(net, 'D01_grain__streaks', xs, p['grain_amp'] * 2.0, 0.12, p['grain_sx'], 11.3 + off)
+    g2 = noise(net, 'D02_grain__fine', xs, p['grain_fine_amp'] * 2.0, 0.06, p['grain_sx'] * 0.7, 17.9 + off)
+    h = T.mix(net, 'D03_height__with_grain', h, T.mix(net, 'D03a_grain__sum', g1, g2, 3), 3)
+    g3 = noise(net, 'D04_grain__roughness', xs, p['rough_amp'] * 2.0, p['rough_size'], 0.5, 23.1 + off)          # 10 October 2026 : isotropic roughness, raises gradient energy. FR : rugosite fine.
+    h = T.mix(net, 'D05_height__with_roughness', h, g3, 3)
+    fn = noise(net, 'D06_fissure__noise', xs, 1.0, 0.06, 0.06, 41.3 + off)
+    fa = T.node(net, 'function', 'D07_fissure__abs', [fn], func=0, func_math=0)
+    fl = T.smooth(net, 'D08_fissure__line', fa, 0.0, 0.012, 1.0, 0.0)
+    h = T.mix(net, 'D09_height__with_fissures', h, T.mix(net, 'D09a_fissure__depth', fl, T.const(net, 'D09b_const__amp', xs, p['fiss_amp']), 5), 4)
+    # E knot (when the seed has one) : disc + ring by hypot distance
+    if knot:
+        dx = T.lin(net, 'E01_knot__dx', xs, kx, kx + 1.0, 0.0, 1.0)
+        dy = T.lin(net, 'E02_knot__dy', ys, ky, ky + 1.0, 0.0, 1.0)
+        dd = T.mix(net, 'E03_knot__dist', T.node(net, 'function', 'E03a_knot__dxabs', [T.lin(net, 'E03b_knot__x', xs, kx - 0.5, kx + 0.5, -1.0, 1.0)], func=0, func_math=0), T.node(net, 'function', 'E03c_knot__dyabs', [T.lin(net, 'E03d_knot__y', ys, ky - 0.5, ky + 0.5, -1.0, 1.0)], func=0, func_math=0), 8)
+        r = p['knot_radius']
+        disc = T.smooth(net, 'E04_knot__disc', dd, r * 2.0 + 0.004, r * 2.0 - 0.004)
+        ring = T.smooth(net, 'E05_knot__ring', dd, r * 2.0 * 3.0 + 0.01, r * 2.0 * 3.0 - 0.01)
+        kn = T.mix(net, 'E06_knot__depth', T.mix(net, 'E06a_ring_minus_disc', ring, disc, 4), T.const(net, 'E06b_const__amp', xs, p['knot_amp'] * 0.5), 5)
+        h = T.mix(net, 'E07_height__with_knot', h, T.mix(net, 'E07a_disc__dark', disc, T.const(net, 'E07b_const__dark', xs, p['knot_amp']), 5), 4)
+        h = T.mix(net, 'E08_height__with_ring', h, kn, 3)
+    # F silhouette multiply + bottom shadow strip (dark below the ragged bottom, inside the tile column)
+    h = T.mix(net, 'F01_height__in_silhouette', h, body, 5)
+    band = T.mix(net, 'F02_shadow__below_edge', T.smooth(net, 'F02a_shadow__after_edge', T.mix(net, 'F02b_y_minus_edge', ys, ybot, 4), -0.004, 0.004), T.smooth(net, 'F02c_shadow__before_end', ys, p['tile_y1'] + 0.004, p['tile_y1'] - 0.004), 5)
+    band = T.mix(net, 'F03_shadow__columns', band, T.mix(net, 'F03a_lr', bl, br, 5), 5)
+    h = T.mix(net, 'F04_height__with_shadow', h, T.mix(net, 'F04a_shadow__level', band, T.const(net, 'F04b_const__lvl', xs, p['shadow_depth'] * 0.5), 5), 3)
+    out = T.node(net, 'clamp', 'Z00_height__final', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    return net, out
+def build_sheet(seeds=range(36), res=418, params=None, out='/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/tile/current_sheet.png'):
+    # EN: one tile graph, 36 seeds, assembled into the 6 x 6 sheet outside Houdini (the graph is unchanged between seeds). FR : un graphe, 36 graines, assemblage en planche.
+    from PIL import Image
+    cell = 1254 // 6
+    sheet = Image.new('L', (1254, 1254), 0)
+    for k in seeds:
+        net, o = build('H_RoofTile', res, params, seed=k)
+        tmp = HL.BASE + 'versions/tile/_seed_%02d.png' % k
+        HL.export_png(net, o, tmp, res)
+        im = Image.open(tmp).convert('L').resize((cell, cell), Image.LANCZOS)
+        sheet.paste(im, ((k % 6) * cell, (k // 6) * cell))
+    sheet.save(out); return out

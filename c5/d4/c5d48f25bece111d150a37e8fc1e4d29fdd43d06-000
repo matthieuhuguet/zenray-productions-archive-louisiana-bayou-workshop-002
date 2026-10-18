@@ -1,0 +1,44 @@
+# 10 October 2026 : one contact sheet per group: rows are methods, columns are the reference and the four phases, each tile labelled. EN: for the eye, before any verdict (method protocol, step 5). FR : planches en contact, une ligne par methode, la reference puis les quatre phases.
+import sys
+
+from PIL import Image, ImageDraw
+
+BASE = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+REF = BASE + 'refs/window_height_ref.png'
+VERS = BASE + 'versions/window/'
+TILE = 240  # 10 October 2026 : tile side in pixels. FR : cote d'une vignette.
+LABEL_H = 22
+
+
+def tile(path, size):
+    im = Image.open(path).convert('L').resize((size, size), Image.LANCZOS)
+    return im.convert('RGB')
+
+
+def sheet(methods, out_path):
+    # 10 October 2026 : one row per method, reference first, then P1 to P4. EN. FR : une ligne par methode.
+    cols = 5
+    width = cols * TILE
+    height = len(methods) * (TILE + LABEL_H)
+    canvas = Image.new('RGB', (width, height), (30, 30, 30))
+    draw = ImageDraw.Draw(canvas)
+    for row, method in enumerate(methods):
+        y = row * (TILE + LABEL_H)
+        draw.text((6, y + 4), method + '   ref, P1, P2, P3, P4', fill=(230, 230, 230))
+        canvas.paste(tile(REF, TILE), (0, y + LABEL_H))
+        for k in range(4):
+            path = VERS + method + '/P%d.png' % (k + 1)
+            try:
+                canvas.paste(tile(path, TILE), ((k + 1) * TILE, y + LABEL_H))
+            except FileNotFoundError:
+                draw.rectangle([(k + 1) * TILE, y + LABEL_H, (k + 2) * TILE - 1, y + LABEL_H + TILE - 1], fill=(70, 20, 20))
+                draw.text(((k + 1) * TILE + 8, y + LABEL_H + 8), 'P%d absente' % (k + 1), fill=(255, 200, 200))
+    canvas.save(out_path)
+    return out_path
+
+
+if __name__ == '__main__':
+    group = sys.argv[1]
+    out = VERS + 'contact_%s.png' % group
+    methods = sys.argv[2:]
+    print(sheet(methods, out))

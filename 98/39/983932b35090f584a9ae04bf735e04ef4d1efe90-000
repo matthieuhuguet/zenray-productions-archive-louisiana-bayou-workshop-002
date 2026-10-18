@@ -1,0 +1,108 @@
+# 10 October 2026 : VISUAL STEP, NO SCORE. One call builds one state of one height in the open session, exports it into versions/<height>/ and writes the panel beside it (reference and generated, full and two zooms). The verdict is not computed here: the eye decides, and zrhoudini.py height log records it. A 64 node iteration given as JSON is saved under Specs/<height>/ and merged into the specs before the build. EN: the only gate is the eye of the reviewer. FR : étape visuelle sans score ; le verdict est visuel, enregistré par zrhoudini.py.
+import datetime
+import importlib
+import json
+import os
+import sys
+
+HEIGHTS_SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if HEIGHTS_SCRIPTS not in sys.path:
+    sys.path.insert(0, HEIGHTS_SCRIPTS)
+import HeightLab as HL
+from PIL import Image
+
+B = HL.BASE
+ZOOM = (477, 477, 777, 777)
+REF = {'whitepaint': 'refs/whitepaint_height_ref.png', 'window': 'refs/window_height_ref.png',
+       'tile': 'refs/tile_height_ref.png'}
+SPEC_FOR = {'whitepaint': 'WP', 'window': 'WN', 'tile': 'TL'}
+
+
+def today():
+    d = datetime.date.today()
+    return '%d %s' % (d.day, d.strftime('%B %Y'))
+
+
+def _reload_all():
+    import Iter64
+    import IterSpecs
+    import WhitePaintV2
+    import WindowV2
+    import TileV2
+    import BuildHeights
+    for module in (HL, Iter64, WhitePaintV2, WindowV2, TileV2, IterSpecs, BuildHeights):
+        importlib.reload(module)
+    return IterSpecs, BuildHeights
+
+
+def _merge_json_specs(IterSpecs, height):
+    folder = os.path.join(B, 'Specs', height)
+    loaded = []
+    if not os.path.isdir(folder):
+        return loaded
+    target = getattr(IterSpecs, SPEC_FOR[height])
+    for name in sorted(os.listdir(folder)):
+        if name.endswith('.json'):
+            key = name[:-5]
+            with open(os.path.join(folder, name), encoding='utf-8') as fh:
+                target[key] = [tuple(item) for item in json.load(fh)]
+            loaded.append(key)
+    return loaded
+
+
+def _panel(height, built, out):
+    ref = Image.open(B + REF[height]).convert('L').resize((1254, 1254), Image.LANCZOS)
+    mine = Image.open(built).convert('L').resize((1254, 1254), Image.LANCZOS)
+    tile = Image.new('L', (1210, 1210), 90)
+    s = 600
+    tile.paste(ref.resize((s, s), Image.LANCZOS), (0, 0))
+    tile.paste(mine.resize((s, s), Image.LANCZOS), (610, 0))
+    tile.paste(ref.crop(ZOOM).resize((s, s), Image.NEAREST), (0, 610))
+    tile.paste(mine.crop(ZOOM).resize((s, s), Image.NEAREST), (610, 610))
+    tile.save(out)
+
+
+def _journal(line):
+    path = B + 'versions/INDEX.md'
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'a', encoding='utf-8') as fh:
+        fh.write(line + '\n')
+
+
+def step(height, tag, key='', spec='', upto='', res=2048, params=''):
+    if height not in SPEC_FOR:
+        return {'ok': False, 'error': 'unknown height ' + str(height)}
+    IterSpecs, BH = _reload_all()
+    if spec:
+        if not key:
+            return {'ok': False, 'error': 'a key such as I09 is required with a spec'}
+        folder = os.path.join(B, 'Specs', height)
+        os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, key + '.json'), 'w', encoding='utf-8') as fh:
+            json.dump(json.loads(spec), fh, indent=1, ensure_ascii=False)
+    loaded = _merge_json_specs(IterSpecs, height)
+    n_up = int(upto) if str(upto).strip() not in ('', 'None') else None
+    prm = json.loads(params) if params else None
+    if height == 'tile':
+        out = B + 'versions/tile/%s.png' % tag
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        BH.tile_sheet(upto=n_up, params=prm, res=res, out=out)
+        nodes, errors = None, []
+    else:
+        if height == 'whitepaint':
+            net, o = BH.build_wp(upto=n_up, params=prm)
+        else:
+            net, o = BH.build_win(upto=n_up, params=prm)
+        out = B + 'versions/%s/%s.png' % (height, tag)
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        HL.export_png(net, o, out, res)
+        graph = [c for c in net.children() if c.name() != 'tmp_export']
+        nodes = len(graph)
+        errors = [c.name() for c in graph if c.errors()][:5]
+    panel = B + 'versions/%s/panel_%s.png' % (height, tag)
+    _panel(height, out, panel)
+    line = '- %s : %s %s, nodes %s, specs %s, upto %s. Verdict : pending (visual, no score).' % (
+        today(), height, tag, nodes, ','.join(loaded), n_up)
+    _journal(line)
+    return {'ok': True, 'image': out, 'panel': panel, 'nodes': nodes, 'errors': errors,
+            'specs': loaded, 'journal_line': line}

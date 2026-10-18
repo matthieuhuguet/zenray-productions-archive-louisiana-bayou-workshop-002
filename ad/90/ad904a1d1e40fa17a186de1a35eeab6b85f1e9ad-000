@@ -1,0 +1,288 @@
+# 10 October 2026, 23:51 : background pass loop for the Louisiana Bayou window height, method M01. Each cycle runs one pass through PassLoop.run_phase, measures the regions and the cells against the reference, appends the loop journal, rewrites the status file and the HTML board, then waits PAUSE_S seconds before the next pass. Run with python3 -u in the background; --once runs a single pass. EN. FR : boucle de passes M01 en arriere-plan, une passe par cycle, mesure par regions et par cellules.
+import argparse
+import json
+import os
+import sys
+import time
+
+import numpy as np
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import MaskMeasure as MM  # noqa: E402
+import PassLoop as PL  # noqa: E402
+PL.GAIN_FRAC = 0.25  # 10 October 2026, 23:59 : damped coverage gain, after P12 oscillated (P11 0.071, P12 0.153 with gain 0.5). FR : gain amorti.
+PL.buckets_v4 = lambda fr, targets, K: PL.buckets_uniform(K)  # 11 October 2026, 00:02 : family allocation frozen to equal buckets. The deficit allocation swung the count per bucket (P12, P14, P16 at 0.15; P11, P13, P15 at 0.07), so only the coverage adapts now. FR : repartition figee.
+
+METHOD = 'M01'
+MIN_PASSES = 96        # 10 October 2026, 23:51 : at least 96 passes, as Matthieu asked. FR : au moins 96 passes.
+MAX_PASSES = 300       # 10 October 2026, 23:51 : safety cap, a stop state and not a target. FR : plafond de securite, pas une cible.
+PAUSE_S = 15           # 10 October 2026, 23:51 : pause between two passes, a process loop (cron cannot go under one minute). FR : pause entre deux passes.
+COOK_BUDGET_S = 20.0   # 10 October 2026, 23:51 : cook budget of one pass, from the window sheet. FR : budget de cuisson par passe.
+K_SMALL = 512          # 10 October 2026, 23:51 : 512 families give 4136 nodes, the 4096 nodes asked. FR : N indicatif.
+K_LARGE = 768          # 10 October 2026, 23:51 : 768 families give 6184 nodes, cooked 12.8 to 18.1 s on P5 to P8. FR : essai.
+K_TRY_BELOW_S = 20.0   # 10 October 2026, 23:51 : a pass cooking under this lets the next pass try K_LARGE. FR : seuil d'essai.
+TOL_CELL = 0.01        # 10 October 2026, 23:51 : provisional, to test against the eye. FR : seuil provisoire par cellule.
+TOL_REGION = 0.02      # 10 October 2026, 23:51 : provisional, per region. FR : seuil provisoire par region.
+STALL_WINDOW = 30      # 10 October 2026, 23:51 : passes without gain before suspension, only after MIN_PASSES. FR : fenetre de plateau.
+STALL_GAIN = 0.002     # 10 October 2026, 23:51 : smallest gain of the worst cell over the window. FR : gain minimal.
+MAX_FAILURES = 3       # 10 October 2026, 23:51 : consecutive failed passes before the loop stops. FR : echecs avant arret.
+GRID = (4, 2)          # 10 October 2026, 23:51 : rows and columns of the verification cells. FR : grille des cellules.
+
+HOLE_START = 0.22     # 10 October 2026, 23:58 : the depth the engine uses by default (WindowSDF.P). FR : profondeur de depart.
+HOLE_MIN, HOLE_MAX = 0.10, 0.45  # 10 October 2026, 23:58 : bounds of the hole depth the loop may choose. FR : bornes de la profondeur.
+GAIN_HOLE = 0.5      # 10 October 2026, 23:58 : exponent of the depth control on the total dark share. FR : exposant du controle de profondeur.
+LIP_W_OVERRIDE = 0.0025       # 11 October 2026 : lever for the edge energy (grad component). FR : levier des bords.
+SX_RANGE_OVERRIDE = (3.0, 6.0)  # 11 October 2026 : lever for the anisotropy (aniso component). FR : levier de l'anisotropie.
+PL.LIP_W = LIP_W_OVERRIDE
+PL.SX_RANGE = SX_RANGE_OVERRIDE
+SIZE_RANGE_OVERRIDE = (0.002, 0.05)  # 11 October 2026 : lever for the chip sizes (chip_p90, chip_med). FR : levier de taille.
+PL.SIZE_RANGE = SIZE_RANGE_OVERRIDE
+ADAPT_N = True      # 11 October 2026, 00:07 : N switch re-tested cleanly with the allocation frozen (P10 was confounded with the allocation swing). Earlier note, 10 October 2026, 23:58 : N switches 512 to 768 by cook time. Tried on pass P10 together with ADAPT_HOLE: the worst cell went from 0.076 (P9) to 0.175 (P10). Off until studied. FR : adaptation de N, desactivee.
+ADAPT_HOLE = True  # 11 October 2026, 00:04 : depth control re-enabled alone, allocation frozen (P17 to P19 stable at 0.060) : depth follows the dark share. Same pass P10 at depth 0.2377 (see ADAPT_N). Off until studied. FR : controle de profondeur, desactive.
+LOOP_DIR = MM.MEASURES + 'loop/'
+JOURNAL = LOOP_DIR + METHOD + '_loop.jsonl'
+STATUS = LOOP_DIR + METHOD + '_status.json'
+BOARD = PL.VERS + 'planche_loop_' + METHOD + '.html'
+REF_REL = '../../refs/window_height_ref.png'  # 10 October 2026, 23:51 : relative to versions/window/. FR : chemin relatif.
+CSS = """
+body{margin:20px;background:#18181b;color:#e8e8ec;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif}
+h1{font-size:20px;margin:0 0 8px} h2{font-size:16px;margin:22px 0 8px}
+.state{color:#c9c9d1;margin:4px 0} .note{font-size:13px;color:#9a9aa6}
+.strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+.strip figure{margin:0;flex:none} .strip img{width:260px;display:block;border:1px solid #3a3a41}
+figcaption{font-size:12px;color:#9a9aa6;margin-top:4px}
+table{border-collapse:collapse;margin-top:6px} th,td{border:1px solid #3a3a41;padding:4px 8px;text-align:left;font-variant-numeric:tabular-nums}
+.grid td{width:150px;text-align:center;font-size:13px}
+.good{color:#78d78f} .near{color:#f0be5a} .far{color:#f06969}
+"""
+
+
+def fr(value, digits=3):
+    # 10 October 2026, 23:51 : French decimal comma. EN. FR : virgule decimale.
+    return ('%.*f' % (digits, value)).replace('.', ',')
+
+
+def css_class(err):
+    # 10 October 2026, 23:51 : green within the cell threshold, amber within 0.03, red beyond. EN. FR : vert, orange, rouge.
+    if err <= TOL_CELL:
+        return 'good'
+    return 'near' if err <= 0.03 else 'far'
+
+
+def cell_fractions(a, hi, lo):
+    # 10 October 2026, 23:51 : light and dark share of each cell of the grid, on the reference thresholds. EN. FR : fractions par cellule.
+    rows = np.linspace(0, a.shape[0], GRID[0] + 1).astype(int)
+    cols = np.linspace(0, a.shape[1], GRID[1] + 1).astype(int)
+    out = []
+    for i in range(GRID[0]):
+        for j in range(GRID[1]):
+            sub = a[rows[i]:rows[i + 1], cols[j]:cols[j + 1]]
+            out.append({'cell': 'R%dC%d' % (i + 1, j + 1), 'L': round(float((sub > hi).mean()), 4), 'D': round(float((sub < lo).mean()), 4)})
+    return out
+
+
+def measure(rec, ref_cells, hi, lo):
+    # 10 October 2026, 23:51 : score of one pass, by cell and by region, against the reference on the same thresholds. EN. FR : score d'une passe.
+    png = PL.VERS + METHOD + '/P%d.png' % rec['phase']
+    cells = cell_fractions(MM.load(png, MM.load_size()), hi, lo)
+    cell_err = [round(max(abs(c['L'] - r['L']), abs(c['D'] - r['D'])), 4) for c, r in zip(cells, ref_cells)]
+    targets, fractions = rec['targets'], rec['fractions']
+    region_err = {r: round(max(abs(fractions[r]['L'] - targets[r]['L']), abs(fractions[r]['D'] - targets[r]['D'])), 4) for r in PL.REGIONS}
+    return {'method': METHOD, 'phase': rec['phase'], 'date': rec['date'], 'families': rec['families'], 'nodes': rec['nodes'],
+            'cook_s': rec['cook_s'], 'wall_s': rec['wall_s'], 'lip_w': rec['lip_w'], 'png': METHOD + '/P%d.png' % rec['phase'],
+            'cells': cells, 'cell_err': cell_err, 'cell_max': max(cell_err), 'cell_mean': round(sum(cell_err) / len(cell_err), 4),
+            'region_err': region_err, 'region_max': max(region_err.values()),
+            'fractions': fractions, 'targets': targets, 'hole_amp': rec.get('hole_amp')}
+
+
+def next_hole(entry, hole):
+    # 10 October 2026, 23:58 : the depth follows the total dark share of the regions toward the reference, proportional with exponent GAIN_HOLE, inside HOLE_MIN and HOLE_MAX. EN. FR : la profondeur suit la part sombre totale vers la reference.
+    wanted = sum(entry['targets'][r]['D'] for r in PL.REGIONS)
+    got = sum(entry['fractions'][r]['D'] for r in PL.REGIONS)
+    ratio = wanted / max(got, 0.01)
+    return round(min(HOLE_MAX, max(HOLE_MIN, hole * ratio ** GAIN_HOLE)), 4)
+
+
+def engine_record(phase):
+    # 10 October 2026, 23:58 : the last successful engine record of one M01 pass. EN. FR : derniere passe reussie du moteur.
+    found = None
+    with open(PL.LOG, encoding='utf-8') as fh:
+        for line in fh:
+            rec = json.loads(line)
+            if rec.get('method') == METHOD and rec.get('phase') == phase and rec.get('status') == 'ok' and rec.get('series') == PL.SERIES:
+                found = rec
+    return found
+
+
+def verdict(phase, entry, history):
+    # 10 October 2026, 23:51 : reached needs every cell and region under its provisional threshold after MIN_PASSES; stalled suspends the loop for a pivot; cap is a safety stop. EN. FR : verdict de la passe.
+    if phase >= MIN_PASSES and entry['cell_max'] <= TOL_CELL and entry['region_max'] <= TOL_REGION:
+        return 'reached'
+    if phase >= MIN_PASSES and len(history) > STALL_WINDOW:
+        best_before = min(history[:-STALL_WINDOW])
+        best_recent = min(history[-STALL_WINDOW:])
+        if best_recent > best_before - STALL_GAIN:
+            return 'stalled'
+    if phase >= MAX_PASSES:
+        return 'cap'
+    return 'running'
+
+
+def make_status(state, phase_last, entries, k_next, large_blacklisted, failures=0, note='', hole_next=HOLE_START):
+    # 10 October 2026, 23:51 : the state file, read by anyone who wants the loop's position. EN. FR : fichier d'etat.
+    best = min(entries, key=lambda e: e['cell_max']) if entries else None
+    return {'method': METHOD, 'state': state, 'passes_done': len(entries), 'phase_last': phase_last,
+            'next_phase': phase_last + 1 if state in ('running', 'retrying') else None,
+            'k_next': k_next, 'large_blacklisted': large_blacklisted, 'hole_next': hole_next, 'failures': failures, 'note': note,
+            'tol_cell': TOL_CELL, 'tol_region': TOL_REGION, 'min_passes': MIN_PASSES, 'max_passes': MAX_PASSES,
+            'pause_s': PAUSE_S, 'cook_budget_s': COOK_BUDGET_S,
+            'best_cell_max': best['cell_max'] if best else None, 'best_phase': best['phase'] if best else None,
+            'updated': PL.stamp()}
+
+
+def write_json_atomic(path, obj):
+    # 10 October 2026, 23:51 : written then renamed, so a reader never sees half a file. EN. FR : ecriture atomique.
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as fh:
+        json.dump(obj, fh, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+
+
+def append_json_line(path, obj):
+    # 10 October 2026, 23:51 : the loop journal is append-only. EN. FR : journal en ajout seul.
+    with open(path, 'a', encoding='utf-8') as fh:
+        fh.write(json.dumps(obj, ensure_ascii=False) + '\n')
+
+
+def load_journal():
+    if not os.path.exists(JOURNAL):
+        return []
+    with open(JOURNAL, encoding='utf-8') as fh:
+        return [json.loads(line) for line in fh if line.strip()]
+
+
+def next_phase():
+    # 10 October 2026, 23:51 : the pass after the last M01 image on disk, so an earlier pass is never overwritten. EN. FR : passe apres la derniere image.
+    folder = PL.VERS + METHOD + '/'
+    numbers = [int(name[1:-4]) for name in os.listdir(folder)
+               if name.startswith('P') and name.endswith('.png') and name[1:-4].isdigit()]
+    return max(numbers) + 1
+
+
+def write_board(entries, status):
+    # 10 October 2026, 23:51 : the follow-up board, rewritten after every pass. EN. FR : planche de suivi, reecrite a chaque passe.
+    latest = entries[-1] if entries else None
+    out = ['<!doctype html>', '<html lang="fr">', '<head>', '<meta charset="utf-8">',
+           '<meta name="viewport" content="width=device-width, initial-scale=1">',
+           '<title>Louisiana Bayou : boucle M01</title>', '<style>' + CSS + '</style>', '</head>', '<body>',
+           '<h1>Louisiana Bayou, fenêtre : boucle M01 par passes</h1>']
+    out.append('<p class="state">État : <b>%s</b> · passes faites : %s · dernière passe : P%s · prochaine : P%s · familles : %s · pause : %s s · budget de cuisson : %s s · mis à jour : %s</p>'
+               % (status['state'], status['passes_done'], status['phase_last'], status['next_phase'] or '-', status['k_next'], PAUSE_S, COOK_BUDGET_S, status['updated']))
+    out.append('<p class="state">Profondeur de trou prochaine : %s (bornes %s à %s, départ %s).</p>' % (fr(status['hole_next']), fr(HOLE_MIN, 2), fr(HOLE_MAX, 2), fr(HOLE_START, 2)))
+    if status['best_phase']:
+        out.append('<p class="state">Meilleure pire cellule : %s à la passe P%s · seuils provisoires : %s par cellule, %s par région.</p>'
+                   % (fr(status['best_cell_max']), status['best_phase'], fr(TOL_CELL), fr(TOL_REGION)))
+    out.append("<p class=\"note\">Le score mesure des proportions claire et sombre, par région et par cellule, sur les seuils absolus de la référence. Il ne mesure pas la position des motifs : une zone peut passer sans que ses détails se ressemblent. Rien n'est validé à 99 pour cent : les seuils se testent contre le verdict à l'œil de Matthieu.</p>")
+    out.append('<h2>Référence et six dernières passes</h2><div class="strip">')
+    out.append('<figure><img src="%s" alt="Référence"><figcaption>Référence</figcaption></figure>' % REF_REL)
+    for e in entries[-6:]:
+        out.append('<figure><img src="%s" alt="P%s"><figcaption>P%s · pire cellule %s · pire région %s</figcaption></figure>'
+                   % (e['png'], e['phase'], e['phase'], fr(e['cell_max']), fr(e['region_max'])))
+    out.append('</div>')
+    if latest:
+        out.append('<h2>Vérification par cellules, passe P%s</h2><table class="grid">' % latest['phase'])
+        for i in range(GRID[0]):
+            out.append('<tr>')
+            for j in range(GRID[1]):
+                k = i * GRID[1] + j
+                c, err = latest['cells'][k], latest['cell_err'][k]
+                out.append('<td class="%s">%s<br>claire %s · sombre %s<br>écart %s</td>'
+                           % (css_class(err), c['cell'], fr(c['L']), fr(c['D']), fr(err)))
+            out.append('</tr>')
+        out.append('</table>')
+    out.append('<h2>Toutes les passes de la boucle</h2><table><tr><th>Passe</th><th>Date</th><th>Familles</th><th>Nodes</th><th>Cuisson</th><th>Pire cellule</th><th>Moyenne cellules</th><th>Pire région</th><th>Verdict</th><th>Image</th></tr>')
+    for e in entries:
+        out.append('<tr><td>P%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s s</td><td class="%s">%s</td><td>%s</td><td class="%s">%s</td><td>%s</td><td><a href="%s">ouvrir</a></td></tr>'
+                   % (e['phase'], e['date'], e['families'], e['nodes'], fr(e['cook_s'], 1), css_class(e['cell_max']), fr(e['cell_max']),
+                      fr(e['cell_mean']), css_class(e['region_max']), fr(e['region_max']), e['verdict'], e['png']))
+    out.append('</table>')
+    out.append('<p class="note">Mis à jour : %s.</p></body></html>' % status['updated'])
+    tmp = BOARD + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as fh:
+        fh.write('\n'.join(out) + '\n')
+    os.replace(tmp, BOARD)
+
+
+def main():
+    ap = argparse.ArgumentParser(description='Louisiana Bayou window height, method M01, pass loop.')
+    ap.add_argument('--once', action='store_true', help='run one pass, then stop')
+    ap.add_argument('--start', type=int, default=0, help='pass number to start from; default is the pass after the last rendered one')
+    args = ap.parse_args()
+    os.makedirs(LOOP_DIR, exist_ok=True)
+    hi, lo, _ = PL.reference_targets()
+    ref_cells = cell_fractions(MM.load(MM.REF, MM.load_size()), hi, lo)
+    entries = load_journal()
+    saved = {}
+    if os.path.exists(STATUS):
+        with open(STATUS, encoding='utf-8') as fh:
+            saved = json.load(fh)
+    phase = args.start or next_phase()
+    k_next = saved.get('k_next', K_SMALL) if ADAPT_N else K_SMALL
+    large_blacklisted = saved.get('large_blacklisted', False)
+    hole = saved.get('hole_next') if ADAPT_HOLE else HOLE_START
+    if hole is None:
+        # 10 October 2026, 23:58 : the first depth comes from the last engine pass before this loop. EN. FR : profondeur de depart.
+        last = engine_record(phase - 1)
+        hole = next_hole(last, last.get('hole_amp') or HOLE_START) if last else HOLE_START
+    history = [e['cell_max'] for e in entries]
+    failures = 0
+    last_state = 'running'
+    print('loop start: pass P%d, families %d' % (phase, k_next), flush=True)
+    while True:
+        try:
+            rec = PL.run_phase(METHOD, phase, K=k_next, limit_s=150.0, hole_amp=hole)
+        except Exception as exc:  # 10 October 2026, 23:51 : an exception is a failed pass, never a silent stop. EN. FR : echec explicite.
+            rec = {'status': 'exception', 'error': repr(exc)[:300]}
+        if rec.get('status') != 'ok':
+            failures += 1
+            last_state = 'error' if (failures >= MAX_FAILURES or args.once) else 'retrying'
+            note = '%s %s' % (rec.get('status'), str(rec.get('error', rec.get('stderr_tail', '')))[:300])
+            write_json_atomic(STATUS, make_status(last_state, phase - 1, entries, k_next, large_blacklisted, failures, note, hole_next=hole))
+            write_board(entries, make_status(last_state, phase - 1, entries, k_next, large_blacklisted, failures, note, hole_next=hole))
+            print('pass P%d failed: %s (attempt %d of %d)' % (phase, note, failures, MAX_FAILURES), flush=True)
+            if last_state == 'error':
+                break
+            time.sleep(PAUSE_S)
+            continue
+        failures = 0
+        entry = measure(rec, ref_cells, hi, lo)
+        history.append(entry['cell_max'])
+        entry['verdict'] = verdict(phase, entry, history)
+        append_json_line(JOURNAL, entry)
+        entries.append(entry)
+        # 10 October 2026, 23:51 : N is decided by the loop. A pass cooking under K_TRY_BELOW_S lets the next pass try K_LARGE; a K_LARGE pass over the budget switches it off for good. EN. FR : N decide par la boucle.
+        if ADAPT_N:
+            if k_next == K_LARGE and entry['cook_s'] > COOK_BUDGET_S:
+                large_blacklisted = True
+                k_next = K_SMALL
+            elif k_next == K_SMALL and entry['cook_s'] <= K_TRY_BELOW_S and not large_blacklisted:
+                k_next = K_LARGE
+        last_state = entry['verdict']
+        if ADAPT_HOLE:
+            hole = next_hole(entry, hole)
+        status = make_status(last_state, phase, entries, k_next, large_blacklisted, hole_next=hole)
+        write_json_atomic(STATUS, status)
+        write_board(entries, status)
+        print('P%d families %s nodes %s cook %s s cell_max %s region_max %s verdict %s'
+              % (phase, entry['families'], entry['nodes'], fr(entry['cook_s'], 1), fr(entry['cell_max']), fr(entry['region_max']), last_state), flush=True)
+        if last_state != 'running' or args.once:
+            break
+        time.sleep(PAUSE_S)
+        phase += 1
+    print('loop end: state %s' % last_state, flush=True)
+
+
+if __name__ == '__main__':
+    main()

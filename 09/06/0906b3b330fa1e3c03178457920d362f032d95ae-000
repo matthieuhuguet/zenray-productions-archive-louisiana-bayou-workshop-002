@@ -1,0 +1,32 @@
+# 10 October 2026 : measures a height reference before any node is placed (protocol MaterialFromReferenceProtocol step 1). EN: row profile (mean over x), column profile, histogram, chip mask statistics by connected components, gradient energy. FR : mesures d'une height de reference avant toute construction.
+import sys, json, numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+name = sys.argv[1]
+a = np.asarray(Image.open('refs/%s_height_ref.png' % name).convert('L'), float) / 255.0
+H, W = a.shape
+out = {'name': name, 'size': [W, H], 'mean': float(a.mean()), 'std': float(a.std())}
+out['row_profile'] = [round(float(v), 4) for v in a.mean(axis=1)]
+out['hist32'] = np.histogram(a, bins=32, range=(0, 1))[0].tolist()
+gy, gx = np.gradient(a)
+out['grad_energy'] = float(np.mean(np.hypot(gx, gy)))
+out['grad_x_over_y'] = float(np.mean(np.abs(gx)) / np.mean(np.abs(gy)))
+# autocorrelation lengths (pixels to fall to 0.5) along x and y after removing the row profile
+res = a - a.mean(axis=1, keepdims=True)
+def corr_len(axis):
+    f = np.fft.fft2(res); ac = np.fft.ifft2(np.abs(f) ** 2).real; ac /= ac[0, 0]
+    line = ac[0, :W // 2] if axis == 'x' else ac[:H // 2, 0]
+    k = int(np.argmax(line < 0.5)); return k
+out['corr_len_x'] = corr_len('x'); out['corr_len_y'] = corr_len('y')
+# chip statistics: bright blobs. threshold = local mean + 0.12
+loc = ndi.uniform_filter(a, 61)
+chip = (a > loc + 0.10)
+chip = ndi.binary_opening(chip, iterations=1)
+lab, n = ndi.label(chip)
+sizes = ndi.sum(chip, lab, range(1, n + 1)) if n else np.array([])
+out['chip_cover'] = float(chip.mean()); out['chip_count'] = int(n)
+if n:
+    out['chip_area_median'] = float(np.median(sizes)); out['chip_area_p90'] = float(np.percentile(sizes, 90))
+json.dump(out, open('measures/ref_%s.json' % name, 'w'))
+print({k: v for k, v in out.items() if k not in ('row_profile', 'hist32')})
+print('hist32', out['hist32'])

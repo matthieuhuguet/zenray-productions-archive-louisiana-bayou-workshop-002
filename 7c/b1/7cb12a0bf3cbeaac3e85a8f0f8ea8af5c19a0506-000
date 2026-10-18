@@ -1,0 +1,39 @@
+# 10 October 2026 : measures the paint and hole accumulators of a spec (the max union of its mask families) before any lip or grain. EN: exports both unions and prints their coverage, to test whether the union saturates as the family count grows. Run under hython. FR : mesure la saturation des unions par max.
+import json
+import os
+import sys
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import WindowSDF as W  # noqa: E402
+
+HL = W.HL
+T = W.T
+OUT = W.B + 'versions/window/unions/'
+
+
+def run(spec_path, keep, tag):
+    # 10 October 2026 : the first `keep` items of the spec, union only. EN. FR : les `keep` premieres familles, unions seules.
+    items = json.load(open(spec_path))['items'][:keep]
+    net = HL.fresh_net('H_Union')
+    ctx, h0 = W.layout(net)
+    acc_p = T.const(net, 'M00_accumulator__paint0', ctx['t'], 0.0)
+    acc_h = T.const(net, 'M00_accumulator__hole0', ctx['t'], 0.0)
+    for item in items:
+        args = (item['size'], item['sx'], item['sy'], item['off'], item['fine'], item['fine_size'],
+                item['t0'], item['t1'], item['ragged_amp'], item['ragged_size'])
+        if item['target'] == 'P':
+            acc_p = W.mfam(net, item['name'], acc_p, ctx['t'], ctx[item['gate']], *args)
+        else:
+            acc_h = W.mfam(net, item['name'], acc_h, ctx['t'], ctx[item['gate']], *args)
+    os.makedirs(OUT, exist_ok=True)
+    paint_png, hole_png = OUT + tag + '_paint.png', OUT + tag + '_hole.png'
+    HL.export_png(net, acc_p, paint_png, 1254)
+    HL.export_png(net, acc_h, hole_png, 1254)
+    return {'tag': tag, 'families': len(items), 'paint_png': paint_png, 'hole_png': hole_png}
+
+
+if __name__ == '__main__':
+    spec_path, keep, tag = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+    print('UNION_JSON ' + json.dumps(run(spec_path, keep, tag)))

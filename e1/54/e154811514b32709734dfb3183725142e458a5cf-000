@@ -1,0 +1,68 @@
+# 11 October 2026 : moves the previous window M01 results into a dated archive and proves the move with SHA-256 before and after.
+# EN: moves only, never deletes anything; the manifest is the proof. FR : archive par déplacement, rien n'est supprimé, preuve par empreintes.
+import glob
+import hashlib
+import json
+import os
+import shutil
+
+H = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights'
+ARCH = os.path.join(H, 'archive', '2026-10-11_window-M01-before-simple-height')
+SOURCES = ([os.path.join(H, 'versions', 'window'), os.path.join(H, 'measures', 'loop'),
+            os.path.join(H, 'measures', 'fiches')]
+           + sorted(glob.glob(os.path.join(H, 'measures', 'masks_M01_*.json'))))
+
+
+def sha(path):
+    # 11 October 2026 : streamed hash, large PNG files stay out of memory. FR : empreinte en flux.
+    h = hashlib.sha256()
+    with open(path, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def files_under(path):
+    if os.path.isdir(path):
+        found = []
+        for root, _, names in os.walk(path):
+            found += [os.path.join(root, n) for n in names]
+        return sorted(found)
+    return [path]
+
+
+# 11 October 2026 : record every file before moving anything. FR : empreintes avant déplacement.
+before = []
+for src in SOURCES:
+    for f in files_under(src):
+        before.append({'rel': os.path.relpath(f, H), 'bytes': os.path.getsize(f), 'sha256': sha(f)})
+
+os.makedirs(ARCH, exist_ok=True)
+for src in SOURCES:
+    dest = os.path.join(ARCH, os.path.relpath(src, H))
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.move(src, dest)
+
+# 11 October 2026 : every archived file must match its hash and the originals must be gone. FR : contrôle après déplacement.
+problems = []
+for rec in before:
+    archived = os.path.join(ARCH, rec['rel'])
+    if not os.path.exists(archived) or sha(archived) != rec['sha256']:
+        problems.append('archive mismatch: ' + rec['rel'])
+    if os.path.exists(os.path.join(H, rec['rel'])):
+        problems.append('original still present: ' + rec['rel'])
+
+total = sum(r['bytes'] for r in before)
+manifest = {'created': '11 October 2026', 'files': len(before), 'bytes': total,
+            'verified': not problems, 'problems': problems, 'records': before}
+with open(os.path.join(ARCH, 'manifest.json'), 'w', encoding='utf-8') as fh:
+    json.dump(manifest, fh, indent=1, ensure_ascii=False)
+with open(os.path.join(ARCH, 'ARCHIVE.md'), 'w', encoding='utf-8') as fh:
+    fh.write('# Archive, passes M01 de la fenêtre (11 October 2026)\n\n')
+    fh.write('- 11 October 2026 : résultats de la boucle M01 (passes P9 à P44), déplacés ici avant la méthode zenray-simple-height.\n')
+    fh.write('- 11 October 2026 : aucune suppression. Empreintes SHA-256 avant et après déplacement dans manifest.json.\n')
+    fh.write('- 11 October 2026 : emplacements d\'origine : versions/window, measures/loop, measures/fiches, measures/masks_M01_*.json (sous Heights).\n')
+    fh.write('- 11 October 2026 : fichiers archivés : %d, octets : %d, vérification : %s.\n' % (len(before), total, 'OK' if not problems else 'ÉCHEC'))
+print('files', len(before), 'bytes', total, 'verified', not problems)
+for p in problems[:20]:
+    print('PROBLEM', p)

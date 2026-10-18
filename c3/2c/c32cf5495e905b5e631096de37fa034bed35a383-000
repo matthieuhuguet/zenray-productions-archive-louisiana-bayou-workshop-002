@@ -1,0 +1,67 @@
+# 10 October 2026 : DEPRECATED as a gate, kept as a log only ; the verdict of a height is visual (zenray-houdini SKILL.md, section of 10 October 2026). FR : score EQUIV déprécié comme porte, journal seulement.
+# 10 October 2026 : extended equivalence measures for the three heights (EN: value distribution, row structure, spectrum per octave band, orientation of the detail, chip statistics, one composite EQUIV). Usage: python3 Metrics2.py <window|whitepaint|tile> <built.png>. The last stdout line is JSON. FR : mesures d'equivalence etendues, score composite EQUIV, derniere ligne en JSON.
+import sys, json, numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+B = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+SIGN = {'window': 1, 'whitepaint': -1, 'tile': 1}
+def load(p):
+    im = Image.open(p).convert('L')
+    if im.size != (1254, 1254): im = im.resize((1254, 1254), Image.LANCZOS)
+    return np.asarray(im, float) / 255.0
+def chips(a, sign):
+    loc = ndi.uniform_filter(a, 61)
+    m = (a > loc + 0.10) if sign > 0 else (a < loc - 0.12)
+    m = ndi.binary_opening(m, iterations=1)
+    lab, n = ndi.label(m)
+    sizes = ndi.sum(m, lab, range(1, n + 1)) if n else np.array([0.0])
+    return m, n, sizes
+def bands(a, nb=8):
+    f = np.abs(np.fft.fftshift(np.fft.fft2(a - a.mean()))) ** 2
+    H, W = a.shape
+    yy, xx = np.mgrid[0:H, 0:W]
+    r = np.hypot((yy - H / 2) / H, (xx - W / 2) / W)
+    e = np.geomspace(1 / 200, 0.5, nb + 1)
+    return np.array([f[(r >= e[i]) & (r < e[i + 1])].mean() for i in range(nb)])
+def orient(a, nb=12):
+    s = ndi.gaussian_filter(a, 1.0)
+    gy, gx = np.gradient(s)
+    mag = np.hypot(gx, gy); ang = np.mod(np.arctan2(gy, gx), np.pi)
+    h, _ = np.histogram(ang, bins=nb, range=(0, np.pi), weights=mag)
+    return h / (h.sum() + 1e-12)
+def stats(a, sign):
+    gy, gx = np.gradient(a)
+    m, n, sizes = chips(a, sign)
+    return dict(mean=a.mean(), std=a.std(), grad=np.hypot(gx, gy).mean(),
+                aniso=np.abs(gx).mean() / np.abs(gy).mean(), cover=m.mean(), count=float(n),
+                med=float(np.median(sizes)), p90=float(np.percentile(sizes, 90)))
+def clip01(x): return float(max(0.0, min(1.0, x)))
+name, png = sys.argv[1], sys.argv[2]
+ref = load(B + 'refs/%s_height_ref.png' % name); mine = load(png)
+sg = SIGN[name]
+r, m = stats(ref, sg), stats(mine, sg)
+hist = lambda a: np.histogram(a, bins=64, range=(0, 1))[0] / a.size
+wass = float(np.abs(np.cumsum(hist(ref)) - np.cumsum(hist(mine))).mean())
+rowp = lambda a: a.mean(axis=1)
+row_corr = float(np.corrcoef(rowp(ref), rowp(mine))[0, 1])
+spec_err = float(np.mean(np.abs(np.log10((bands(mine) + 1e-12) / (bands(ref) + 1e-12)))))
+tv = 0.5 * float(np.abs(orient(ref) - orient(mine)).sum())
+comp = {
+    'row_corr': clip01(row_corr),
+    'hist': clip01(1 - 5 * wass),
+    'mean': clip01(1 - 3 * abs(1 - m['mean'] / r['mean'])),
+    'std': clip01(1 - 3 * abs(1 - m['std'] / r['std'])),
+    'grad': clip01(1 - 2 * abs(1 - m['grad'] / r['grad'])),
+    'aniso': clip01(1 - 2 * abs(1 - m['aniso'] / r['aniso'])),
+    'spectrum': clip01(1 - 2 * spec_err),
+    'orient': clip01(1 - 2 * tv),
+    'chip_cover': clip01(1 - 2 * abs(1 - m['cover'] / max(r['cover'], 1e-6))),
+    'chip_count': clip01(1 - 2 * abs(1 - m['count'] / max(r['count'], 1))),
+    'chip_med': clip01(1 - 2 * abs(1 - m['med'] / max(r['med'], 1e-6))),
+    'chip_p90': clip01(1 - 2 * abs(1 - m['p90'] / max(r['p90'], 1e-6))),
+}
+equiv = float(np.mean(list(comp.values())))
+mn = min(comp, key=comp.get)
+print('METRICS2 %s EQUIV %.4f min %s %.3f' % (name, equiv, mn, comp[mn]))
+print(json.dumps({'name': name, 'png': png, 'equiv': equiv, 'min_name': mn, 'min': comp[mn], 'comp': comp,
+                  'raw': {'row_corr': row_corr, 'wass': wass, 'spec_err': spec_err, 'tv_orient': tv, 'ref': r, 'mine': m}}))

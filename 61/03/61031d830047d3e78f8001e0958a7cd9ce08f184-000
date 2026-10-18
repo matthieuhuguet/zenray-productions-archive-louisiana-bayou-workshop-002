@@ -1,0 +1,96 @@
+# 10 October 2026 : one context sheet per pass (JSON), built from the pass journal, the render and the mask file. Nothing is re-rendered. EN. FR : fiche de contexte par passe, sans recalcul.
+import json
+import os
+import re
+import sys
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import MaskMeasure as MM  # noqa: E402
+import PassLoop as PL  # noqa: E402
+
+FICHES = MM.MEASURES + 'fiches/'
+WINDOW_SDF = MM.BASE + 'Scripts/WindowSDF.py'
+SEED = 7  # 10 October 2026 : the default seed of PassLoop.run_phase. FR : graine par défaut.
+
+
+def finish_amplitudes():
+    # 10 October 2026 : paint and hole depths are read from WindowSDF.P, so the sheet never invents them. FR : profondeurs lues dans WindowSDF.
+    text = open(WINDOW_SDF).read()
+    paint = float(re.search(r'paint_amp=([0-9.]+)', text).group(1))
+    hole = float(re.search(r'hole_amp=([0-9.]+)', text).group(1))
+    return paint, hole
+
+
+def load_records():
+    # 10 October 2026 : the last successful pass of each (method, phase) in the v3 and v4 series. FR : dernière passe réussie.
+    recs = {}
+    for line in open(PL.LOG):
+        r = json.loads(line)
+        if r.get('status') == 'ok' and r.get('series') in ('v3', 'v4'):
+            recs[(r['method'], r['phase'])] = r
+    return recs
+
+
+def build(method, phase, recs, hi, lo, targets, paint, hole):
+    rec = recs[(method, phase)]
+    prev = recs.get((method, phase - 1)) if phase > 1 else None
+    png = PL.VERS + method + '/P%d.png' % phase
+    fr = PL.render_fractions(png, hi, lo)
+    fr_prev = PL.render_fractions(PL.VERS + method + '/P%d.png' % (phase - 1), hi, lo) if phase > 1 else None
+    ecarts = {r: {'L': round(fr[r]['L'] - targets[r]['L'], 4), 'D': round(fr[r]['D'] - targets[r]['D'], 4)} for r in targets}
+    conc = {'L': round(fr['top']['L'] - fr['lames']['L'], 4), 'D': round(fr['top']['D'] - fr['lames']['D'], 4),
+            'cible_L': round(targets['top']['L'] - targets['lames']['L'], 4),
+            'cible_D': round(targets['top']['D'] - targets['lames']['D'], 4)}
+    fiche = {
+        'id': '%s_P%d' % (method, phase),
+        'methode': method,
+        'passe': phase,
+        'date': rec.get('date'),
+        'serie': rec.get('series'),
+        'controleur': ('fractions absolues par région, gain 0,5, graine %d' % SEED) if rec.get('series') == 'v4'
+                      else 'pourcentages par région (v3, périmé : seuils de percentile)',
+        'N': {'familles': rec['families'], 'family_nodes': rec['family_nodes'], 'nodes': rec['nodes'],
+              'construction_s': rec['build_s'], 'recalcul_s': rec['cook_s'], 'total_s': rec['wall_s']},
+        'finition': {'lip_w': rec.get('lip_w'), 'paint_amp': paint, 'hole_amp': hole},
+        'buckets': rec['buckets'],
+        'couverture_utilisee': rec['coverage'],
+        'couverture_precedente': prev['coverage'] if prev else None,
+        'fractions_mesurees': {r: {'L': round(fr[r]['L'], 4), 'D': round(fr[r]['D'], 4)} for r in fr},
+        'fractions_precedentes': ({r: {'L': round(fr_prev[r]['L'], 4), 'D': round(fr_prev[r]['D'], 4)} for r in fr_prev} if fr_prev else None),
+        'cibles': {r: {'L': round(targets[r]['L'], 4), 'D': round(targets[r]['D'], 4)} for r in targets},
+        'ecarts_aux_cibles': ecarts,
+        'concentration': conc,
+        'fichiers': {'png': png, 'panneau': PL.VERS + method + '/panel_P%d.png' % phase,
+                     'spec': PL.SPECS + method + '/P%d.json' % phase,
+                     'masques': MM.MEASURES + 'masks_%s_P%d.json' % (method, phase)},
+        'avis_oeil': '',
+    }
+    os.makedirs(FICHES, exist_ok=True)
+    with open(FICHES + '%s_P%d.json' % (method, phase), 'w', encoding='utf-8') as fh:
+        json.dump(fiche, fh, ensure_ascii=False, indent=1)
+    return fiche
+
+
+def main(methods, phases):
+    hi, lo, targets = PL.reference_targets()
+    paint, hole = finish_amplitudes()
+    recs = load_records()
+    for m in methods:
+        for p in phases:
+            if (m, p) not in recs:
+                print(m, 'P%d' % p, 'absente du journal')
+                continue
+            f = build(m, p, recs, hi, lo, targets, paint, hole)
+            print(f['id'], f['serie'], 'N', f['N']['familles'], 'nodes', f['N']['nodes'], 'recalcul', f['N']['recalcul_s'],
+                  '| haut L %.3f D %.3f | carré L %.3f D %.3f | conc %+.3f/%+.3f' % (
+                      f['fractions_mesurees']['top']['L'], f['fractions_mesurees']['top']['D'],
+                      f['fractions_mesurees']['carre']['L'], f['fractions_mesurees']['carre']['D'],
+                      f['concentration']['L'], f['concentration']['D']))
+
+
+if __name__ == '__main__':
+    methods = sys.argv[1].split(',') if len(sys.argv) > 1 else ['M01', 'M11', 'M14']
+    phases = [int(x) for x in sys.argv[2].split(',')] if len(sys.argv) > 2 else [1, 2, 3, 4]
+    main(methods, phases)

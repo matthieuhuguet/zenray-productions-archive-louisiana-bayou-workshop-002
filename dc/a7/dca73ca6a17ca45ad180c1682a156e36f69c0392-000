@@ -1,0 +1,226 @@
+# 11 October 2026 : builds the window height one layer at a time, in a fresh copnet, with real Copernicus nodes only.
+# EN: hython BuildSimpleHeight.py --upto N exports layer N and saves its hip; --probe exports the y coordinate alone.
+# FR : construit les calques 0 à N dans un graphe neuf, sans image importée : la référence ne sert qu'à mesurer.
+import argparse
+import os
+import sys
+
+import hou
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import TrimNodes as TN  # noqa: E402  # 11 October 2026 : proven helpers (remap, blend, rop_image raw). FR : helpers éprouvés.
+import Common as C  # noqa: E402
+
+SEAM_MIN_DEPTH = 25.0  # 11 October 2026 : joints shallower than this wait for a later layer. FR : seuil des joints.
+
+
+def new_net(name='SimpleHeight'):
+    # 11 October 2026 : the graph is rebuilt from zero at every pass, so no old state survives. FR : graphe reconstruit à zéro.
+    old = hou.node('/obj/' + name)
+    if old is not None:
+        old.destroy()
+    return hou.node('/obj').createNode('copnet', name)
+
+
+def key_ramp(keys):
+    # 11 October 2026 : mono ramp from (t, value) keys in 0..1, sorted, duplicates removed. FR : rampe mono.
+    clean = {}
+    for t, v in keys:
+        clean[round(min(max(t, 0.0), 1.0), 6)] = min(max(v, 0.0), 1.0)
+    ts = sorted(clean)
+    return hou.Ramp([hou.rampBasis.Linear] * len(ts), ts, [clean[t] for t in ts])
+
+
+def coord(net, name, axis):
+    # 11 October 2026 : the ramp runs along x by default; rotation 90 turns it along y. Setting endposy had no effect (probe of
+    # 11 October 2026: identical row means). FR : rotation 90 pour l'axe y, comme dans la trim.
+    return TN.node(net, 'ramp', name, signature='f1', rampType=0, method=0, cycles=1.0, phase=0.0,
+                   rotation=90.0 if axis == 'y' else 0.0, startposx=0.0, startposy=0.0, endposx=1.0, endposy=0.0)
+
+
+# 11 October 2026 : LAYER 0, flat plate at the reference mean (109 of 255). FR : plateau à la moyenne mesurée.
+def layer_00_base(net, prev):
+    return TN.node(net, 'constant', 'L00_base', signature='f1', f1=0.43)
+
+
+def band_keys(m):
+    # 11 October 2026 : each board keeps its measured plateau, each strong joint its measured value. FR : plateaux et joints mesurés.
+    seams = [s for s in m['seams'] if s['depth'] >= SEAM_MIN_DEPTH]
+    prof = m['row_profile_every_8']
+    h = float(m['size'][1])
+
+    def level(y0, y1):
+        i0 = int(y0 // 8)
+        i1 = max(i0 + 1, int(y1 // 8))
+        seg = prof[i0:i1]
+        return sum(seg) / len(seg)
+
+    # 11 October 2026 : two keys per board (flat plateau), one key at each joint: a V-shaped dip, no slope across the board.
+    # FR : deux clés par planche (plateau plat), une clé par joint.
+    keys = []
+    bounds = [0.0] + [float(s['y']) for s in seams] + [h]
+    for i in range(len(bounds) - 1):
+        a, b = bounds[i], bounds[i + 1]
+        lo = 0.0 if i == 0 else a + 2.0
+        hi = h if i == len(bounds) - 2 else b - 2.0
+        v = level(lo, hi) / 255.0
+        keys.append((lo / h, v))
+        keys.append((hi / h, v))
+    for s in seams:
+        keys.append((s['y'] / h, s['value'] / 255.0))
+    return keys
+
+
+# 11 October 2026 : LAYER 1, the horizontal structure of boards and joints, read from the row profile of the reference.
+# FR : structure horizontale des planches et des joints.
+def layer_01_bands(net, prev):
+    y = coord(net, 'L01_y', 'y')
+    return TN.node(net, 'remap', 'L01_bands', [y], inputmin=0.0, inputmax=1.0, outputmin=0.0, outputmax=1.0,
+                   useramp=1, ramp=key_ramp(band_keys(C.measures())))
+
+
+# 11 October 2026 : LAYER 2, peeling paint. A fractal noise cut by a soft threshold raises the flakes by FLAKE_GAIN. The plate
+# is lowered by GAIN x COVER first, so the mean stays where layer 1 put it and only the texture changes. FR : éclats, moyenne conservée.
+FLAKE_GAIN = 0.45   # 11 October 2026 : height of a full flake, a first guess to be tuned on the planche. FR : hauteur d'un éclat.
+FLAKE_COVER = 0.20  # 11 October 2026 : share of the noise above the ramp centre, measured on probe_noise.png. FR : couverture mesurée.
+
+
+# 11 October 2026 : thresholds of the flake mask, measured on the noise itself (probe_noise.png: mean 0.500, std 0.078, share
+# above 0.56 = 0.201). The ramp is centred on 0.56 so the mask covers about 20 percent. FR : seuils mesurés sur le bruit.
+FLAKE_T0 = 0.545
+FLAKE_T1 = 0.575
+
+
+def noise_node(net, name='L02_flake_noise'):
+    return TN.node(net, 'fractalnoise', name, elementsize=0.05, oct=4.0, rough=0.55, amp=0.5, center=0.5)
+
+
+def layer_02_flakes(net, prev):
+    noise = noise_node(net)
+    mask = TN.smooth(net, 'L02_flake_mask', noise, FLAKE_T0, FLAKE_T1)
+    delta = TN.lin(net, 'L02_flake_delta', mask, 0.0, 1.0, 0.0, FLAKE_GAIN)
+    shift = FLAKE_GAIN * FLAKE_COVER
+    plate = TN.lin(net, 'L02_plate', prev, 0.0, 1.0, -shift, 1.0 - shift)
+    return TN.node(net, 'blend', 'L02_flakes', [plate, delta], mode=3)
+
+
+# 11 October 2026 : LAYER 3, wood fibres. A fine fractal noise is smeared along x by Streak Blur (horizontal fibres), then
+# mapped to a span of GRAIN_GAIN around its mean, which is subtracted from the plate, so the mean does not move.
+# FR : fibres du bois, moyenne conservée.
+GRAIN_GAIN = 0.12    # 11 October 2026 : height span of the fibres, a first guess to tune on the planche. FR : relief des fibres.
+GRAIN_WIDTH = 0.03   # 11 October 2026 (v3, 0.06 gave std 48.33 against 48.10 at 0.18) : half width of the streak values mapped onto the span (0.18 gave +-5 levels only, measured
+# on L03_grain_v1: std 48.02 to 48.10). FR : demi-largeur ; 0,06 donne environ +-15 niveaux.
+GRAIN_LENGTH = 110   # 11 October 2026 : streak length in pixels of the 1254 grid. FR : longueur des fibres en pixels.
+
+
+def layer_03_grain(net, prev):
+    noise = TN.node(net, 'fractalnoise', 'L03_grain_noise', elementsize=0.006, oct=3.0, rough=0.6, amp=0.5, center=0.5)
+    streak = TN.node(net, 'streakblur', 'L03_grain_streak', [noise], dirtype=0, dirx=1.0, diry=0.0, units=1,
+                     length_pixels=GRAIN_LENGTH)
+    delta = TN.lin(net, 'L03_grain_delta', streak, 0.5 - GRAIN_WIDTH, 0.5 + GRAIN_WIDTH, 0.0, GRAIN_GAIN)
+    shift = GRAIN_GAIN / 2.0
+    plate = TN.lin(net, 'L03_plate', prev, 0.0, 1.0, -shift, 1.0 - shift)
+    return TN.node(net, 'blend', 'L03_grain', [plate, delta], mode=3)
+
+
+# 11 October 2026 : LAYER 4, bevelled ends of the louver slats. Measured on the left ends of the reference (every 2 px, louver face
+# at 0.39): a bright edge, a dip of about 0.05 near 26 px, back to the face level at 60 px. FR : biseau des bouts des lames.
+BEVEL_PX = [(0, 0.09), (2, 0.05), (6, -0.02), (14, -0.035), (26, -0.05), (38, -0.04), (50, -0.02), (60, 0.0), (80, 0.0)]
+BEVEL_RANGE = 0.1           # 11 October 2026 : deltas are stored as (delta + RANGE) / (2 RANGE) in the ramp. FR : étendue.
+LOUVER_TOP = 730 / 1254.0   # 11 October 2026 : first louver row (seam 727 in ref_measures.json). FR : haut des lames.
+LOUVER_SOFT = 16 / 1254.0   # 11 October 2026 : height of the louver mask transition. FR : transition du masque.
+
+
+def layer_04_bevel(net, prev):
+    yc = coord(net, 'L04_y', 'y')
+    louver = TN.smooth(net, 'L04_louver', yc, LOUVER_TOP, LOUVER_TOP + LOUVER_SOFT)
+    xc = coord(net, 'L04_x', 'x')
+    xi = TN.lin(net, 'L04_x_inv', xc, 0.0, 1.0, 1.0, 0.0)
+    dist = TN.node(net, 'blend', 'L04_edge_dist', [xc, xi], mode=13)   # 11 October 2026 : min(x, 1 - x), distance to the edge
+    keys = [(px / float(C.H_REF), (d + BEVEL_RANGE) / (2.0 * BEVEL_RANGE)) for px, d in BEVEL_PX]
+    delta = TN.curve(net, 'L04_bevel', dist, keys, 1.0, -BEVEL_RANGE, BEVEL_RANGE, TN.SMOOTH)
+    masked = TN.node(net, 'blend', 'L04_bevel_masked', [delta, louver], mode=5)
+    return TN.node(net, 'blend', 'L04_bevel_on', [prev, masked], mode=3)
+
+
+# 11 October 2026 : LAYER 5, fine paint chips. A finer noise cut by a sharp threshold adds many small raised chips: they carry
+# the high-frequency edges that the reference has (vertical gradient 29.8 in the reference against 6.5 at layer 4).
+# Thresholds and coverage are measured on probe_fine.png. FR : éclats fins, arêtes dures, seuils mesurés.
+FINE_T0 = 0.595     # 11 October 2026 : probe_fine.png mean 0.500, std 0.081, share above 0.60 = 0.096. FR : mesuré.
+FINE_T1 = 0.605
+FINE_GAIN = 0.35    # 11 October 2026 : height of a fine chip, a first guess. FR : hauteur d'un éclat fin.
+FINE_COVER = 0.10   # 11 October 2026 : share of the fine noise above the ramp centre, to be measured. FR : couverture.
+
+
+def fine_noise_node(net, name='L05_chip_noise'):
+    return TN.node(net, 'fractalnoise', name, elementsize=0.012, oct=3.0, rough=0.6, amp=0.5, center=0.5)
+
+
+def layer_05_chips(net, prev):
+    noise = fine_noise_node(net)
+    mask = TN.smooth(net, 'L05_chip_mask', noise, FINE_T0, FINE_T1)
+    delta = TN.lin(net, 'L05_chip_delta', mask, 0.0, 1.0, 0.0, FINE_GAIN)
+    shift = FINE_GAIN * FINE_COVER
+    plate = TN.lin(net, 'L05_plate', prev, 0.0, 1.0, -shift, 1.0 - shift)
+    return TN.node(net, 'blend', 'L05_chips', [plate, delta], mode=3)
+
+
+LAYERS = [layer_00_base, layer_01_bands, layer_02_flakes, layer_03_grain, layer_04_bevel, layer_05_chips]
+
+
+def build(upto):
+    net = new_net()
+    top = None
+    for fn in LAYERS[:upto + 1]:
+        top = fn(net, top)
+    return net, top
+
+
+def tag_of(fn):
+    # 11 October 2026 : layer_01_bands becomes L01_bands. FR : nom du calque.
+    return 'L' + fn.__name__[len('layer_'):]
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--upto', type=int, default=0)
+    ap.add_argument('--res', type=int, default=C.H_REF)
+    ap.add_argument('--probe', action='store_true')
+    ap.add_argument('--probe-noise', action='store_true')
+    ap.add_argument('--probe-fine', action='store_true')
+    args = ap.parse_args(sys.argv[1:])
+    TN.PIXEL_SCALE = args.res / float(C.H_REF)   # 11 October 2026 : pixel parameters are written on the 1254 grid. FR : grille 1254.
+    if args.probe:
+        net = new_net('SimpleHeightProbe')
+        y = coord(net, 'probe_y', 'y')
+        png = os.path.join(C.SH, 'measures', 'probe_y.png')
+        TN.export(net, y, png, args.res)
+        print('probe', png)
+        return
+    if args.probe_noise:
+        net = new_net('SimpleHeightProbe')
+        n = noise_node(net, 'probe_noise')
+        png = os.path.join(C.SH, 'measures', 'probe_noise.png')
+        TN.export(net, n, png, args.res)
+        print('probe', png)
+        return
+    if args.probe_fine:
+        net = new_net('SimpleHeightProbe')
+        n = fine_noise_node(net, 'probe_fine')
+        png = os.path.join(C.SH, 'measures', 'probe_fine.png')
+        TN.export(net, n, png, args.res)
+        print('probe', png)
+        return
+    net, top = build(args.upto)
+    tag = tag_of(LAYERS[args.upto])
+    png = os.path.join(C.VERSIONS, tag + '.png')
+    TN.export(net, top, png, args.res)
+    hip = os.path.join(C.HIPS, 'SimpleHeight_' + tag + '.hip')
+    hou.hipFile.save(hip)
+    print('exported', png)
+    print('saved', hip)
+
+
+main()

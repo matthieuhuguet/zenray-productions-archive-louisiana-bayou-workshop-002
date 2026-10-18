@@ -1,0 +1,61 @@
+# 10 October 2026 : one-pass capacity test. EN: builds ONE graph holding `count` mask families (8 nodes each, so count x 8 nodes), exports it at the working resolution, and prints build time and cook time. Real window families are recycled with unique names and shifted noise offsets. Run through RunCapacity.py, which enforces the wall-clock limit. FR : test de capacite, une passe de N nodes construite d'un coup et chronometree.
+import json
+import os
+import sys
+import time
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import WindowSDF as W  # imports HeightLab, so it runs only inside hython
+
+HL = W.HL
+T = W.T
+OUT_CAP = W.B + 'versions/window/capacity/'
+# 10 October 2026 : the eight real M4 passes, 64 families in all, are the source of every synthetic family. EN. FR : source reelle, 64 familles.
+SOURCE = W.M4_P1 + W.M4_P2 + W.M4_P3 + W.M4_P4 + W.M4_P5 + W.M4_P6 + W.M4_P7 + W.M4_P8
+
+
+def synthetic_items(count):
+    # 10 October 2026 : count families cycled from SOURCE, each with a unique name and a noise offset shifted per cycle, so no two nodes are identical. EN. FR : familles recyclees, noms uniques, decalage de bruit par cycle.
+    items = []
+    for k in range(count):
+        base = SOURCE[k % len(SOURCE)]
+        cycle = k // len(SOURCE)
+        item = list(base)
+        item[1] = 'z%04d' % k
+        item[7] = base[7] + 0.31 * cycle + 0.017 * k
+        items.append(item)
+    return items
+
+
+def build(count, res):
+    # 10 October 2026 : one graph, layout plus `count` families plus the finish, exported once. EN. FR : un seul graphe, un seul rendu.
+    items = synthetic_items(count)
+    net = HL.fresh_net('H_Capacity')
+    t_build = time.time()
+    ctx, h0 = W.layout(net)
+    acc_p = T.const(net, 'M00_accumulator__paint0', ctx['t'], 0.0)
+    acc_h = T.const(net, 'M00_accumulator__hole0', ctx['t'], 0.0)
+    for item in items:
+        name, target, gate_key = item[1], item[2], item[3]
+        if target == 'P':
+            acc_p = W.mfam(net, name, acc_p, ctx['t'], ctx[gate_key], *item[4:])
+        else:
+            acc_h = W.mfam(net, name, acc_h, ctx['t'], ctx[gate_key], *item[4:])
+    h = W.finish_m4(net, h0, acc_p, acc_h)
+    out = T.node(net, 'clamp', 'Z00_height__final', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    nodes = len(net.children())
+    build_s = time.time() - t_build
+    os.makedirs(OUT_CAP, exist_ok=True)
+    png = OUT_CAP + 'cap_%04d_r%d.png' % (nodes, res)
+    t_cook = time.time()
+    HL.export_png(net, out, png, res)
+    cook_s = time.time() - t_cook
+    return {'families': count, 'nodes': nodes, 'res': res, 'build_s': round(build_s, 2), 'cook_s': round(cook_s, 2), 'image': png}
+
+
+if __name__ == '__main__':
+    count = int(sys.argv[1])
+    res = int(sys.argv[2]) if len(sys.argv) > 2 else 1254
+    print('CAPACITY_JSON ' + json.dumps(build(count, res)))

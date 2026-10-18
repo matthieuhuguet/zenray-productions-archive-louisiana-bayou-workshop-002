@@ -1,0 +1,112 @@
+# 10 October 2026 : black and white masks of the reference and of one render, per region, with thresholds fixed by the REFERENCE alone (25th and 75th percentile of its own region). EN: light and dark masks for both images, error masks (missing or extra paint, missing or extra holes), coverage and IoU per region, and the grid cell where each error is largest. Masks never enter the graph. FR : masques noir et blanc, seuils issus de la seule reference, jamais une porte de score.
+import json
+import os
+import sys
+
+import numpy as np
+from PIL import Image
+
+BASE = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+REF = BASE + 'refs/window_height_ref.png'
+MEASURES = BASE + 'measures/'
+MASKS = BASE + 'versions/window/masks/'
+# 10 October 2026 : same values as WindowSDF.P (patch_x0, patch_x1, patch_y0, patch_y1) and its top split. Keep in sync. FR : memes valeurs que WindowSDF.P.
+PATCH = (0.411, 0.602, 0.452, 0.572)
+TOP_END = 0.33
+EDGE_X = 0.03
+GRID = 6
+
+
+def load(path, size):
+    im = Image.open(path).convert('L')
+    if im.size != size:
+        im = im.resize(size, Image.LANCZOS)
+    return np.asarray(im, dtype=np.float32) / 255.0
+
+
+def load_size():
+    # 10 October 2026 : canvas size of the reference, the size every render is compared at. EN. FR : taille de reference.
+    return Image.open(REF).convert('L').size
+
+
+def region_masks(h, w):
+    # 10 October 2026 : four regions of the window as canvas masks. EN. FR : quatre regions de la fenetre.
+    y = (np.arange(h, dtype=np.float32) + 0.5) / h
+    x = (np.arange(w, dtype=np.float32) + 0.5) / w
+    Y, X = np.meshgrid(y, x, indexing='ij')
+    x0, x1, y0, y1 = PATCH
+    patch = (X >= x0) & (X <= x1) & (Y >= y0) & (Y <= y1)
+    ends = (Y >= TOP_END) & ((X < EDGE_X) | (X > 1.0 - EDGE_X)) & ~patch
+    top = (Y < TOP_END) & ~patch
+    lames = (Y >= TOP_END) & ~patch & ~ends
+    return {'top': top, 'lames': lames, 'bouts': ends, 'carre': patch}
+
+
+def grid_peak(err):
+    # 10 October 2026 : grid cell (x, y as canvas fractions) holding most of one error mask. EN. FR : cellule qui porte l'essentiel de l'erreur.
+    h, w = err.shape
+    hh, ww = h - h % GRID, w - w % GRID
+    cells = err[:hh, :ww].reshape(GRID, hh // GRID, GRID, ww // GRID).sum(axis=(1, 3))
+    r, c = np.unravel_index(np.argmax(cells), cells.shape)
+    total = float(err.sum())
+    return {'centre_xy': [round((c + 0.5) / GRID, 3), round((r + 0.5) / GRID, 3)],
+            'share_of_error': round(float(cells[r, c]) / total, 4) if total else 0.0}
+
+
+def iou(a, b):
+    union = float(np.logical_or(a, b).sum())
+    return round(float(np.logical_and(a, b).sum()) / union, 4) if union else 1.0
+
+
+def compare(ref, ren, regs):
+    # 10 October 2026 : thresholds from the reference region only, same thresholds applied to the render. EN. FR : seuils de la reference seule.
+    report, maps = {}, {'light': np.zeros(ref.shape, bool), 'dark': np.zeros(ref.shape, bool),
+                        'missing_light': np.zeros(ref.shape, bool), 'extra_light': np.zeros(ref.shape, bool),
+                        'missing_dark': np.zeros(ref.shape, bool), 'extra_dark': np.zeros(ref.shape, bool)}
+    for name, m in regs.items():
+        r = ref[m]
+        lo, hi = np.percentile(r, 25), np.percentile(r, 75)
+        ref_light, ren_light = (ref > hi) & m, (ren > hi) & m
+        ref_dark, ren_dark = (ref < lo) & m, (ren < lo) & m
+        errs = {'missing_light': ref_light & ~ren_light, 'extra_light': ren_light & ~ref_light,
+                'missing_dark': ref_dark & ~ren_dark, 'extra_dark': ren_dark & ~ref_dark}
+        area = float(m.sum())
+        entry = {'area_px': int(area), 'threshold_low': round(float(lo), 4), 'threshold_high': round(float(hi), 4),
+                 'ref_light': round(float(ref_light.sum()) / area, 4), 'ren_light': round(float(ren_light.sum()) / area, 4),
+                 'ref_dark': round(float(ref_dark.sum()) / area, 4), 'ren_dark': round(float(ren_dark.sum()) / area, 4),
+                 'iou_light': iou(ref_light, ren_light), 'iou_dark': iou(ref_dark, ren_dark),
+                 'mean_ref': round(float(r.mean()), 4), 'mean_ren': round(float(ren[m].mean()), 4)}
+        for key, e in errs.items():
+            entry[key] = round(float(e.sum()) / area, 4)
+            entry[key + '_peak'] = grid_peak(e)
+            maps[key] |= e
+        maps['light'] |= ren_light
+        maps['dark'] |= ren_dark
+        report[name] = entry
+    return report, maps
+
+
+def save_maps(maps, ref_maps_dir):
+    # 10 October 2026 : one black and white PNG per map, white = true. EN. FR : une image noir et blanc par masque.
+    os.makedirs(ref_maps_dir, exist_ok=True)
+    for key, m in maps.items():
+        Image.fromarray((m * 255).astype(np.uint8)).save(ref_maps_dir + key + '.png')
+
+
+def main(render_path, tag):
+    size = Image.open(REF).convert('L').size
+    ref = load(REF, size)
+    ren = ref.copy() if render_path == 'ref' else load(render_path, size)
+    regs = region_masks(ref.shape[0], ref.shape[1])
+    report, maps = compare(ref, ren, regs)
+    report = {'tag': tag, 'render': render_path, 'grid': GRID, 'regions': report}
+    save_maps(maps, MASKS + tag + '/')
+    os.makedirs(MEASURES, exist_ok=True)
+    with open(MEASURES + 'masks_%s.json' % tag, 'w') as fh:
+        json.dump(report, fh, indent=1)
+    print(json.dumps(report))
+    return report
+
+
+if __name__ == '__main__':
+    main(sys.argv[1], sys.argv[2])

@@ -1,0 +1,31 @@
+# 10 October 2026 : helpers shared by the three Louisiana Bayou height builders. EN: one copnet per height, real Copernicus nodes only, export to PNG by rop_image (raw), a metric report against the reference. FR : aides communes aux trois constructeurs de height.
+import hou, os, sys, json, subprocess
+sys.path.insert(0, os.path.dirname(__file__))
+import TrimNodes as T
+BASE = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+def fresh_net(name):
+    old = hou.node('/obj/' + name)
+    if old: old.destroy()
+    net = hou.node('/obj').createNode('copnet', name); return net
+def export_png(net, src, path, res=1254):
+    r = net.node('tmp_export') or net.createNode('rop_image', 'tmp_export')
+    r.setInput(0, src); r.parm('copoutput').set(path); r.parm('colorconversion').set(2)
+    r.parm('setres').set(1); r.parm('res1').set(res); r.parm('res2').set(res)
+    r.parm('execute').pressButton(); return path
+def measure(name, png):
+    out = subprocess.run(['python3', BASE + 'Scripts/CompareHeight.py', name, png], capture_output=True, text=True)
+    return out.stdout + out.stderr
+
+def tidy(net, titles):
+    """EN: lay the nodes out and group them in one network box per section, keyed by the first letter of the node name (A..Z). FR : une boite par section, selon la premiere lettre du nom. 10 October 2026."""
+    import hou
+    for b in net.networkBoxes(): b.destroy()
+    net.layoutChildren()
+    groups = {}
+    for n in net.children():
+        if n.type().name() == 'rop_image': continue
+        groups.setdefault(n.name().split('_')[0], []).append(n)   # 10 October 2026 : one box per section token, e.g. L3, A00. FR : une boite par section.
+    for k, nodes in sorted(groups.items()):
+        box = net.createNetworkBox('Sec_' + k); box.setComment(titles.get(k, k))
+        for n in nodes: box.addNode(n)
+        box.fitAroundContents()

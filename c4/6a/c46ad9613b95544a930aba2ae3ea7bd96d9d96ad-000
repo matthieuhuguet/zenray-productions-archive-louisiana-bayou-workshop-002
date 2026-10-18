@@ -1,0 +1,23 @@
+# 10 October 2026 : ONE ROOF TILE, iteration 2. EN: the tile graph of BuildTileHeight, with its silhouette set to the measured cell geometry of the reference sheet (tile 177.6 x 182 px, pitch 207.6 x 208 px, margin 18 x 16 px) ; the 36 seeds are pasted at that pitch. FR : une tuile, géométrie mesurée de la planche de référence.
+import sys, random
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+import BuildTileHeight as TL
+from PIL import Image
+CELL = 209
+PITCH_X, PITCH_Y = 207.6, 208.0
+MEASURED = dict(tile_x0=18.0 / CELL, tile_x1=196.0 / CELL, tile_y0=16.0 / CELL, tile_y1=198.0 / CELL)
+def build(netname='H_RoofTile', res=2048, params=None, seed=0):
+    p = dict(MEASURED); p.update(params or {})
+    return TL.build(netname, res, p, seed=seed)
+def build_sheet(seeds=range(36), res=2048, params=None, out=None):
+    sheet = Image.new('L', (1254, 1254), 0)
+    tmpd = HL.BASE + 'versions/tile/'
+    for k in seeds:
+        net, o = build('H_RoofTile', res, params, seed=k)
+        tmp = tmpd + '_seed_%02d.png' % k
+        HL.export_png(net, o, tmp, res)
+        im = Image.open(tmp).convert('L').resize((CELL, CELL), Image.LANCZOS)
+        c, r = k % 6, k // 6
+        sheet.paste(im, (int(round(PITCH_X * c)), int(round(PITCH_Y * r))))
+    sheet.save(out); return out

@@ -1,0 +1,370 @@
+# 10 October 2026 : one method, one pass per call. A pass is ONE graph of K families (512 by default), built in one hython call, rendered, measured by black and white masks. Each family is calibrated to a coverage share of its gate (no saturation of the union, measured 10 October 2026). The next pass reallocates families and coverage from the measured errors. EN. FR : une methode, une passe par appel, guidee par les masques.
+import json
+import math
+import os
+import random
+import subprocess
+import sys
+import time
+from statistics import NormalDist
+
+import numpy as np
+
+import MaskMeasure as MM
+
+HYTHON = '/Applications/Houdini/Current/Frameworks/Houdini.framework/Versions/Current/Resources/bin/hython'
+BUILD = MM.BASE + 'Scripts/BuildSpec.py'
+SPECS = MM.BASE + 'Specs/window/'
+VERS = MM.BASE + 'versions/window/'
+LOG = MM.MEASURES + 'passes.jsonl'
+REGIONS = ['top', 'lames', 'bouts', 'carre']
+REGION_GATES = {'top': ['g_top'], 'lames': ['g_low'], 'bouts': ['g_lend', 'g_rend'], 'carre': ['g_patch']}
+# 10 October 2026 : how each method builds its families and finish. FR : configuration des methodes.
+METHODS = {
+    'M01': {'kind': 'm', 'finish': 'lips'},
+    'M02': {'kind': 'abs', 'finish': 'abs', 'levels': 'random'},
+    'M03': {'kind': 'abs', 'finish': 'abs', 'levels': 'fixed'},
+    'M04': {'kind': 'fam', 'finish': 'add'},
+    'M05': {'kind': 'm', 'finish': 'mult'},
+    'M11': {'kind': 'm', 'finish': 'lips', 'bands': True},
+    'M12': {'kind': 'madd', 'finish': 'lips'},
+    'M13': {'kind': 'm', 'finish': 'planar'},
+    'M14': {'kind': 'm', 'finish': 'lips', 'hist': True},
+    'M06': {'kind': 'cell', 'finish': 'lips'},
+    'M07': {'kind': 'worley', 'finish': 'lips'},
+    'M08': {'kind': 'turing', 'finish': 'lips', 'iterations': (5, 12)},
+    'M09': {'kind': 'streak', 'finish': 'lips'},
+    'M10': {'kind': 'eik', 'finish': 'lips'},
+    'M16': {'kind': 'tile', 'finish': 'lips'},
+    'M15': {'kind': 'sdf', 'finish': 'lips'},
+}
+# 10 October 2026 : families per pass by kind. Kinds that carry a distance transform per family (abs, fam) cost about 0.06 s each to cook, so they stay at 256 families (measured: 512 abs families cooked in 31.7 s, over the 20 s budget). FR : familles par passe selon le type.
+KIND_FAMILIES = {'m': 512, 'madd': 512, 'abs': 256, 'fam': 256, 'worley': 512, 'streak': 512, 'cell': 128, 'eik': 256, 'turing': 32, 'tile': 384, 'sdf': 512}
+# 10 October 2026 : one frequency band per phase for M11 (coarse, medium, fine, all). FR : une bande par phase.
+BANDS = {1: (0.05, 0.12), 2: (0.015, 0.05), 3: (0.004, 0.015), 4: (0.004, 0.12)}
+# 10 October 2026 : start coverage per (region, target), share of the gate covered by the union. FR : couverture de depart.
+COVER_START = {'top': {'P': 0.22, 'H': 0.18}, 'lames': {'P': 0.20, 'H': 0.15}, 'bouts': {'P': 0.30, 'H': 0.30}, 'carre': {'P': 0.30, 'H': 0.30}}
+NOISE_STD = 0.146  # 10 October 2026 : fractalnoise standard deviation per unit amplitude (sheet, 10 October 2026). FR : ecart-type par amplitude.
+FLOOR = 0.25       # 10 October 2026 : share of families kept uniform, so no bucket starves. FR : part uniforme.
+GAIN = 1.5         # 10 October 2026 : how strongly a measured error moves coverage. FR : gain.
+COVER_MIN, COVER_MAX = 0.005, 0.6
+SIZE_RANGE = (0.004, 0.12)  # 11 October 2026 : family size range of the non-band methods; LoopM01 may override it. FR : plage de taille.
+SX_RANGE = (1.0, 4.0)  # 11 October 2026 : default horizontal stretch of the families; LoopM01 may override it. FR : etirement par defaut.
+
+
+def stamp():
+    # 10 October 2026 : English date, month spelled out. EN. FR : date au format anglais.
+    now = time.localtime()
+    return '%d %s %d, %02d:%02d' % (now.tm_mday, time.strftime('%B', now), now.tm_year, now.tm_hour, now.tm_min)
+
+
+def log_uniform(rng, lo, hi):
+    return 10 ** rng.uniform(math.log10(lo), math.log10(hi))
+
+
+# 10 October 2026 : measured quantiles (KindProbe.py, 10 October 2026). Worley lower tail: (cdf, value). Cell upper tail: (tail probability, value). FR : quantiles mesures.
+WORLEY_LOW = [(0.01, 0.055), (0.05, 0.125), (0.25, 0.282), (0.5, 0.412)]
+CELL_UP = [(0.01, 0.486), (0.05, 0.427), (0.25, 0.161), (0.5, 0.0)]
+
+
+def table_value(table, p):
+    # 10 October 2026 : piecewise-linear value of a measured table, extrapolated with its first slope. EN. FR : interpolation sur table mesuree.
+    xs, ys = [t[0] for t in table], [t[1] for t in table]
+    if p <= xs[0]:
+        slope = (ys[1] - ys[0]) / (xs[1] - xs[0])
+        return max(0.0, ys[0] + (p - xs[0]) * slope)
+    for i in range(1, len(xs)):
+        if p <= xs[i]:
+            return ys[i - 1] + (p - xs[i - 1]) * (ys[i] - ys[i - 1]) / (xs[i] - xs[i - 1])
+    return ys[-1]
+
+
+def family_threshold(fine, coverage, width):
+    # 10 October 2026 : thresholds whose mask covers `coverage` of its gate for a noise of this std. EN: centre = sigma * quantile(1 - coverage). FR : seuil pour une couverture donnee.
+    sigma = NOISE_STD * math.sqrt(1.0 + fine * fine)
+    centre = sigma * NormalDist().inv_cdf(1.0 - coverage)
+    return centre - width / 2.0, centre + width / 2.0
+
+
+def sample_item(rng, name, target, region, coverage, cfg, phase):
+    # 10 October 2026 : one family of the method's kind, threshold calibrated to its coverage. EN. FR : une famille calibree, du type de la methode.
+    gate = rng.choice(REGION_GATES[region])
+    vertical = region == 'carre'
+    # 10 October 2026 : bands are defined for phases 1 to 4; from phase 5 the mixed band (phase 4) is used, the synthesis of the method. FR : au-delà de la passe 4, bande mixte.
+    lo, hi = BANDS[phase if phase in BANDS else 4] if cfg.get('bands') else SIZE_RANGE
+    size = log_uniform(rng, lo, hi)
+    sx = 1.0 if vertical else rng.uniform(SX_RANGE[0], SX_RANGE[1])  # 11 October 2026 : horizontal stretch range, a lever of the component method. EN. FR : plage d'etirement horizontal.
+    sy = 12.0 if vertical else 1.0
+    fine = rng.uniform(0.0, 0.3)
+    fine_size = log_uniform(rng, 0.002, 0.02)
+    width = NOISE_STD * rng.uniform(0.5, 1.5)
+    t0, t1 = family_threshold(fine, coverage, width)
+    item = {'kind': cfg['kind'], 'name': name, 'target': target, 'gate': gate, 'size': round(size, 5), 'sx': round(sx, 3),
+            'sy': sy, 'off': round(rng.uniform(0.0, 1000.0), 3), 'fine': round(fine, 3), 'fine_size': round(fine_size, 5),
+            't0': round(t0, 4), 't1': round(t1, 4), 'ragged_amp': round(rng.uniform(0.05, 0.2), 3),
+            'ragged_size': round(log_uniform(rng, 0.002, 0.02), 5), 'coverage': round(coverage, 5)}
+    if cfg['kind'] == 'abs':
+        if cfg.get('levels') == 'fixed':
+            level = 0.78 if target == 'P' else 0.34
+        else:
+            level = rng.uniform(0.45, 0.9) if target == 'P' else rng.uniform(0.1, 0.5)
+        item.update(width=round(rng.uniform(0.004, 0.012), 5), level=round(level, 4), mode=12 if target == 'P' else 13)
+    if cfg['kind'] == 'fam':
+        amp = rng.uniform(0.05, 0.3) * (1 if target == 'P' else -1)
+        item.update(width=round(rng.uniform(0.005, 0.012), 5), amp=round(amp, 4))
+    # 10 October 2026 : parameters of the Copernicus kinds, drawn in ranges set by their node meaning (not by the fractal calibration). EN. FR : parametres des types Copernicus.
+    if cfg['kind'] == 'worley':
+        centre = table_value(WORLEY_LOW, coverage)
+        item.update(jitter=round(rng.uniform(0.5, 1.0), 3), t0=round(centre - 0.02, 4), t1=round(centre + 0.02, 4))
+    if cfg['kind'] == 'streak':
+        item.update(angle=90.0 if vertical else 0.0, length=round(rng.uniform(0.02, 0.12), 4))
+    if cfg['kind'] == 'cell':
+        centre = table_value(CELL_UP, coverage)
+        item.update(jitter=round(rng.uniform(0.3, 1.0), 3), density=round(rng.uniform(0.3, 0.9), 3), gap=round(rng.uniform(0.0, 0.2), 3), t0=round(centre - 0.03, 4), t1=round(centre + 0.03, 4))
+    if cfg['kind'] == 'eik':
+        item.update(radius=round(rng.uniform(0.001, 0.006), 4))
+    if cfg['kind'] == 'turing':
+        t = rng.uniform(0.4, 0.6)
+        lo_it, hi_it = cfg.get('iterations', (20, 80))
+        item.update(iterations=int(rng.uniform(lo_it, hi_it)), radius=round(rng.uniform(1.0, 4.0), 3), tt0=round(t - 0.05, 4), tt1=round(t + 0.05, 4))
+    if cfg['kind'] == 'sdf':
+        # 10 October 2026 : rectangle sizes and offsets drawn in canvas units, threshold on the sdfshape field (inside is 0). EN. FR : rectangles tires au hasard.
+        item.update(rect_sx=round(rng.uniform(0.03, 0.4), 4), rect_sy=round(rng.uniform(0.02, 0.3), 4), rect_round=round(rng.uniform(0.0, 0.5), 3),
+                    tx=round(rng.uniform(-0.5, 0.5), 4), ty=round(rng.uniform(-0.5, 0.5), 4), t0=0.45, t1=0.5)
+    if cfg['kind'] == 'tile':
+        t0 = rng.uniform(0.2, 0.6)
+        item.update(rows=rng.randint(6, 10), cols=rng.randint(1, 3), t0=round(t0, 4), t1=round(t0 + rng.uniform(0.05, 0.3), 4))
+    return item
+
+
+def buckets_uniform(K):
+    # 10 October 2026 : phase 1, the same number of families in each (region, target). EN. FR : phase 1 uniforme.
+    keys = [(r, t) for r in REGIONS for t in 'PH']
+    base = K // len(keys)
+    counts = {k: base for k in keys}
+    for k in keys[:K - base * len(keys)]:
+        counts[k] += 1
+    return counts
+
+
+def buckets_from_errors(report, K):
+    # 10 October 2026 : families per (region, target) follow the measured errors. Paint is needed where light is missing or dark is extra; holes where dark is missing or light is extra. A uniform floor keeps every bucket alive. EN. FR : repartition selon les erreurs.
+    weight = {}
+    for r in REGIONS:
+        e = report['regions'][r]
+        weight[(r, 'P')] = e['missing_light'] + e['extra_dark']
+        weight[(r, 'H')] = e['missing_dark'] + e['extra_light']
+    total = sum(weight.values())
+    keys = list(weight)
+    share = {k: (1 - FLOOR) * (weight[k] / total if total else 0.0) + FLOOR / len(keys) for k in keys}
+    counts = {k: int(math.floor(K * share[k])) for k in keys}
+    rest = K - sum(counts.values())
+    for k in sorted(keys, key=lambda k: -(K * share[k] - counts[k]))[:rest]:
+        counts[k] += 1
+    return counts
+
+
+def clamp(v):
+    return min(COVER_MAX, max(COVER_MIN, v))
+
+
+def update_coverage(prev, report):
+    # 10 October 2026 : net paint need = missing light + extra dark - extra light - missing dark. Paint coverage follows it up, holes follow it down. EN. FR : couverture suivie de l'erreur nette.
+    new = {}
+    for r in REGIONS:
+        e = report['regions'][r]
+        d_paint = e['missing_light'] + e['extra_dark'] - e['extra_light'] - e['missing_dark']
+        new[r] = {'P': clamp(prev[r]['P'] * (1 + GAIN * d_paint)), 'H': clamp(prev[r]['H'] * (1 - GAIN * d_paint))}
+    return new
+
+
+# 10 October 2026 : update rule of the coverage. 'net' is the first series (paint minus holes, the two errors cancel when they are equal); 'sep' follows each error on its own. FR : regle de mise a jour.
+SERIES = 'v4'  # 10 October 2026 : v1 lip 0.005 net rule, v2 separated, v3 fraction rule with lip 0.0015 (the current series). FR : serie courante.
+LIP_W = 0.0015  # 10 October 2026 : paint and hole lip width for every method. At 0.005 small flakes never reach their full height (tested on M01 P2). FR : largeur de levre commune.
+UPDATE_RULE = 'frac'
+GAIN_FRAC = 0.5  # 10 October 2026 : exponent of the proportional fraction control. FR : exposant du controle proportionnel.
+
+
+def update_coverage_sep(prev, report):
+    # 10 October 2026 : paint follows its own error (missing light minus extra light), holes follow theirs (missing dark minus extra dark), so a flat render widens its tonal spread instead of cancelling. EN. FR : couverture suivie de ses erreurs propres.
+    new = {}
+    for r in REGIONS:
+        e = report['regions'][r]
+        new[r] = {'P': clamp(prev[r]['P'] * (1 + GAIN * (e['missing_light'] - e['extra_light']))),
+                  'H': clamp(prev[r]['H'] * (1 + GAIN * (e['missing_dark'] - e['extra_dark'])))}
+    return new
+
+
+def update_coverage_frac(prev, report):
+    # 10 October 2026 : proportional control of the light and dark FRACTIONS of each region, render against reference on the same thresholds. Positions are random by design, so position errors are not used. EN. FR : controle proportionnel des fractions, pas des positions.
+    new = {}
+    for r in REGIONS:
+        e = report['regions'][r]
+        ratio_p = e['ref_light'] / max(e['ren_light'], 0.01)
+        ratio_h = e['ref_dark'] / max(e['ren_dark'], 0.01)
+        new[r] = {'P': clamp(prev[r]['P'] * ratio_p ** GAIN_FRAC), 'H': clamp(prev[r]['H'] * ratio_h ** GAIN_FRAC)}
+    return new
+
+
+def buckets_from_fractions(report, K):
+    # 10 October 2026 : families per (region, target) follow the fraction deficits (reference minus render), with the uniform floor. EN. FR : repartition selon les deficits de fraction.
+    weight = {}
+    for r in REGIONS:
+        e = report['regions'][r]
+        weight[(r, 'P')] = max(0.0, e['ref_light'] - e['ren_light'])
+        weight[(r, 'H')] = max(0.0, e['ref_dark'] - e['ren_dark'])
+    total = sum(weight.values())
+    keys = list(weight)
+    share = {k: (1 - FLOOR) * (weight[k] / total if total else 0.0) + FLOOR / len(keys) for k in keys}
+    counts = {k: int(math.floor(K * share[k])) for k in keys}
+    rest = K - sum(counts.values())
+    for k in sorted(keys, key=lambda k: -(K * share[k] - counts[k]))[:rest]:
+        counts[k] += 1
+    return counts
+
+
+def reference_targets():
+    # 10 October 2026 : absolute thresholds from the reference alone (global 75th and 25th percentile), and the light and dark share each region must reach. EN. FR : seuils absolus et cibles par region, mesures sur la seule reference.
+    ref = MM.load(MM.REF, MM.load_size())
+    hi, lo = float(np.quantile(ref, 0.75)), float(np.quantile(ref, 0.25))
+    regs = MM.region_masks(ref.shape[0], ref.shape[1])
+    targets = {r: {'L': float((ref[m] > hi).mean()), 'D': float((ref[m] < lo).mean())} for r, m in regs.items()}
+    return hi, lo, targets
+
+
+def render_fractions(png, hi, lo):
+    # 10 October 2026 : light and dark share of each region of one render, on the reference's absolute thresholds. EN. FR : fractions claire et sombre par region.
+    a = MM.load(png, MM.load_size())
+    regs = MM.region_masks(a.shape[0], a.shape[1])
+    return {r: {'L': float((a[m] > hi).mean()), 'D': float((a[m] < lo).mean())} for r, m in regs.items()}
+
+
+def update_coverage_v4(prev, fr, targets):
+    # 10 October 2026 : proportional control of each region's light share (paint coverage) and dark share (hole coverage) toward the reference targets. EN. FR : controle vers les cibles de la reference.
+    new = {}
+    for r in REGIONS:
+        ratio_p = targets[r]['L'] / max(fr[r]['L'], 0.01)
+        ratio_h = targets[r]['D'] / max(fr[r]['D'], 0.01)
+        new[r] = {'P': clamp(prev[r]['P'] * ratio_p ** GAIN_FRAC), 'H': clamp(prev[r]['H'] * ratio_h ** GAIN_FRAC)}
+    return new
+
+
+def buckets_v4(fr, targets, K):
+    # 10 October 2026 : families per (region, target) follow the deficit toward each target, with the uniform floor. EN. FR : repartition selon les deficits vers les cibles.
+    weight = {}
+    for r in REGIONS:
+        weight[(r, 'P')] = max(0.0, targets[r]['L'] - fr[r]['L'])
+        weight[(r, 'H')] = max(0.0, targets[r]['D'] - fr[r]['D'])
+    total = sum(weight.values())
+    keys = list(weight)
+    share = {k: (1 - FLOOR) * (weight[k] / total if total else 0.0) + FLOOR / len(keys) for k in keys}
+    counts = {k: int(math.floor(K * share[k])) for k in keys}
+    rest = K - sum(counts.values())
+    for k in sorted(keys, key=lambda k: -(K * share[k] - counts[k]))[:rest]:
+        counts[k] += 1
+    return counts
+
+
+def items_from_buckets(counts, coverage, rng, phase, cfg):
+    items = []
+    for (region, target), n in counts.items():
+        if n == 0:
+            continue
+        # 10 October 2026 : n families share the bucket coverage, so their union reaches it and does not saturate. EN. FR : n familles se partagent la couverture.
+        per_family = 1.0 - (1.0 - coverage[region][target]) ** (1.0 / n)
+        for i in range(n):
+            items.append(sample_item(rng, 'p%02d_%s_%s_%03d' % (phase, region, target, i), target, region, per_family, cfg, phase))
+    return items
+
+
+def hist_keys(prev_png, size):
+    # 10 October 2026 : curve keys mapping the previous render's quantiles to the reference's (measured numbers only, the reference image never enters the graph). EN. FR : cles de la courbe d'histogramme.
+    ref = MM.load(MM.REF, size).ravel()
+    ren = MM.load(prev_png, size).ravel()
+    qs = np.linspace(0.02, 0.98, 25)
+    xs, ys = np.quantile(ren, qs), np.quantile(ref, qs)
+    keys, last = [[0.0, 0.0]], 0.0
+    for x, y in zip(xs, ys):
+        if x > last + 1e-4:
+            keys.append([round(float(x), 5), round(float(y), 5)])
+            last = float(x)
+    if keys[-1][0] < 1.0:
+        keys.append([1.0, 1.0])
+    return keys
+
+
+def run_build(spec_path, png, res, limit_s):
+    # 10 October 2026 : one hython build, killed at limit_s. EN. FR : un build, borne.
+    start = time.time()
+    try:
+        done = subprocess.run([HYTHON, BUILD, spec_path, png, str(res)], capture_output=True, text=True, timeout=limit_s)
+    except subprocess.TimeoutExpired:
+        return {'status': 'timeout', 'limit_s': limit_s, 'wall_s': round(time.time() - start, 1)}
+    lines = [ln for ln in done.stdout.splitlines() if ln.startswith('PASS_JSON ')]
+    if done.returncode != 0 or not lines:
+        return {'status': 'crash', 'code': done.returncode, 'stderr_tail': done.stderr[-600:], 'wall_s': round(time.time() - start, 1)}
+    rec = json.loads(lines[-1][len('PASS_JSON '):])
+    rec.update(status='ok', wall_s=round(time.time() - start, 1))
+    return rec
+
+
+def run_phase(method_id, phase, K=None, res=1254, seed=7, limit_s=150.0, hole_amp=None):
+    # 10 October 2026 : one pass: spec, one build, one render, one mask measure, one journal line. EN. FR : une passe complete.
+    cfg = METHODS[method_id]
+    K = K or KIND_FAMILIES[cfg['kind']]
+    rng = random.Random(seed)  # 10 October 2026 : same seed in every phase of a method, so the families move only through their coverage. EN. FR : meme graine a chaque phase.
+    spec_dir = SPECS + method_id + '/'
+    out_dir = VERS + method_id + '/'
+    os.makedirs(spec_dir, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
+    if phase == 1:
+        counts = buckets_uniform(K)
+        coverage = {r: dict(v) for r, v in COVER_START.items()}
+    else:
+        prev_spec = json.load(open(spec_dir + 'P%d.json' % (phase - 1)))
+        prev_report = json.load(open(MM.MEASURES + 'masks_%s_P%d.json' % (method_id, phase - 1)))
+        if SERIES == 'v4':
+            hi, lo, targets = reference_targets()
+            fr_prev = render_fractions(out_dir + 'P%d.png' % (phase - 1), hi, lo)
+            counts = buckets_v4(fr_prev, targets, K)
+            coverage = update_coverage_v4(prev_spec['coverage'], fr_prev, targets)
+        elif UPDATE_RULE == 'frac':
+            counts = buckets_from_fractions(prev_report, K)
+            coverage = update_coverage_frac(prev_spec['coverage'], prev_report)
+        else:
+            counts = buckets_from_errors(prev_report, K)
+            coverage = update_coverage_sep(prev_spec['coverage'], prev_report) if UPDATE_RULE == 'sep' else update_coverage(prev_spec['coverage'], prev_report)
+    items = items_from_buckets(counts, coverage, rng, phase, cfg)
+    spec = {'method': method_id, 'phase': phase, 'finish': cfg['finish'], 'families': len(items),
+            'coverage': coverage, 'items': items, 'lip_w': LIP_W}
+    if hole_amp is not None:
+        spec['hole_amp'] = round(hole_amp, 4)  # 10 October 2026, 23:58 : hole depth chosen by the caller, the loop. EN. FR : profondeur de trou choisie par l'appelant.
+    if cfg.get('hist') and phase > 1:
+        spec['hist'] = hist_keys(out_dir + 'P%d.png' % (phase - 1), MM.load_size())
+    spec_path = spec_dir + 'P%d.json' % phase
+    with open(spec_path, 'w') as fh:
+        json.dump(spec, fh)
+    png = out_dir + 'P%d.png' % phase
+    rec = run_build(spec_path, png, res, limit_s)
+    rec.update(series=SERIES, lip_w=LIP_W, method=method_id, phase=phase, date=stamp(), kind=cfg['kind'], finish=cfg['finish'], rule=UPDATE_RULE, hole_amp=spec.get('hole_amp'),
+               buckets={'%s_%s' % k: v for k, v in counts.items()},
+               coverage={r: {t: round(v, 4) for t, v in d.items()} for r, d in coverage.items()})
+    if rec['status'] == 'ok' and SERIES == 'v4':
+        hi, lo, targets = reference_targets()
+        rec['targets'] = targets
+        rec['fractions'] = render_fractions(png, hi, lo)
+    if rec['status'] == 'ok':
+        tag = '%s_P%d' % (method_id, phase)
+        report = MM.main(png, tag)
+        rec['masks_tag'] = tag
+        rec['regions'] = {r: {k: round(report['regions'][r][k], 4) for k in ('iou_light', 'iou_dark', 'missing_light', 'extra_light', 'missing_dark', 'extra_dark')} for r in REGIONS}
+    with open(LOG, 'a') as fh:
+        fh.write(json.dumps(rec) + '\n')
+    print(json.dumps(rec))
+    return rec
+
+
+if __name__ == '__main__':
+    method_id, phase = sys.argv[1], int(sys.argv[2])
+    K = int(sys.argv[3]) if len(sys.argv) > 3 else KIND_FAMILIES[METHODS[method_id]['kind']]
+    run_phase(method_id, phase, K=K)

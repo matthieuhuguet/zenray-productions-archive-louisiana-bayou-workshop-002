@@ -1,0 +1,59 @@
+# 10 October 2026 : HEIGHT of the white painted clapboard sheet, real Copernicus nodes only (no copy of the reference). Sections : A layout (planks), B profile (lap shadow, measured median), C paint chips (clustered, ragged), D wood grain inside chips, E fine paint, F fine grain and hair cracks, Z final. Calibration measured 10 October 2026 : a fractalnoise with amp a has a standard deviation of 0.146 a ; elementscalex works only with elementsizetype = 1. FR : height du clin peint, noeuds reels, aucun calque de la reference.
+import hou, os, sys, json
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+T = HL.T
+P = dict(cycles=8.4914, phase=0.16,
+         chip_thr=0.66, chip_edge=0.02, chip_depth=0.22, chip_big=0.03, chip_big_sx=2.4, chip_small=0.008, ragged=0.7, chip_mid=0.022, mid_w=1.0, chip_mid_sx=2.0, bottom_weight=0.6, chip_amp=1.0,
+         grain_amp=0.35, grain_sx=14.0, rim_size=0.002, rim_amp=0.6, crack_size1=0.014, crack_size2=0.008, crack_sx=60.0, crack_w1=0.010, crack_w2=0.006, crack_amp=0.35,
+         crack_size3=0.004, crack_w3=0.018, crack_amp3=0.35, fine_amp=0.25, fine_size=0.002, fine_sx=18.0)     # 10 October 2026 : V003, SCORE 0.827. FR : version V003.
+def noise(net, name, src, amp, size, sx, off):
+    return T.node(net, 'fractalnoise', name, [src], amp=amp, center=0.0, elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=1.0, offx=off)
+def build(netname='H_WhitePaint', res=1254, params=None):
+    p = dict(P); p.update(params or {})
+    prof = json.load(open(HL.BASE + 'measures/whitepaint_profile.json'))
+    net = HL.fresh_net(netname)
+    ry = T.node(net, 'ramp', 'A00_ramp__down_y', signature='f1', rotation=90.0, cycles=p['cycles'], method=1); ry.parm('phase').set(p['phase'])
+    t = T.lin(net, 'A01_plank__t', ry, 0.0, 1.0)
+    keys = [(prof['tau'][i], prof['median'][i]) for i in range(0, len(prof['tau']), 2)]
+    base = T.curve(net, 'B01_profile__lap_shadow_median', t, keys, 1.0, 0.0, 1.0, T.SMOOTH)
+    nb = noise(net, 'C01_chips__big_noise', t, p['chip_amp'] * 2.0, p['chip_big'], p['chip_big_sx'], 3.1)
+    ns = noise(net, 'C02_chips__ragged_noise', t, p['chip_amp'] * 2.0, p['chip_small'], 1.6, 7.7)
+    nsm = T.mix(net, 'C03_chips__ragged_scaled', ns, T.const(net, 'C03a_const__ragged', t, p['ragged']), 5)
+    wgt = T.curve(net, 'C04_chips__bottom_weight', t, [(0.0, 0.0), (0.15, 0.0), (0.5, 0.35), (0.84, 1.0), (0.93, 0.7), (1.0, 0.0)], 1.0, 0.0, p['bottom_weight'])
+    nm = noise(net, 'C02m_chips__mid_noise', t, p['chip_amp'] * 2.0, p['chip_mid'], p['chip_mid_sx'], 5.3)
+    nmm = T.mix(net, 'C03m_chips__mid_scaled', nm, T.const(net, 'C03m_const__mid', t, p['mid_w']), 5)
+    bm = T.mix(net, 'C04m_chips__big_plus_mid', nb, nmm, 3)
+    e = T.mix(net, 'C05_chips__field', T.mix(net, 'C05a_chips__big_plus_ragged', bm, nsm, 3), wgt, 3)
+    mask = T.smooth(net, 'C06_chips__mask', e, p['chip_thr'] - p['chip_edge'], p['chip_thr'] + p['chip_edge'])
+    keepm = T.curve(net, 'C07_chips__keep_inside_plank', t, [(0.0, 0.0), (0.09, 0.0), (0.14, 1.0), (0.93, 1.0), (1.0, 0.0)], 1.0, 0.0, 1.0)
+    mask = T.mix(net, 'C08_chips__mask_in_plank', mask, keepm, 5)
+    depth = T.mix(net, 'C09_chips__depth', mask, T.const(net, 'C09a_const__depth', t, p['chip_depth']), 5)
+    h = T.mix(net, 'C10_height__with_chips', base, depth, 4)
+    gr = noise(net, 'D01_grain__streaks', t, p['grain_amp'], 0.010, p['grain_sx'], 11.3)
+    grd = T.mix(net, 'D02_grain__inside_chips', T.mix(net, 'D02a_grain__scaled', gr, T.const(net, 'D02b_const__amp', t, 1.0), 5), mask, 5)
+    h = T.mix(net, 'D03_height__with_grain', h, grd, 3)
+    # E chip rim : the paint edge is raised and lit (blur difference of the mask), the bare wood inside is flat
+    mb1 = T.node(net, 'E01_rim__mask_blur_small', 'blur', [mask]) if False else T.node(net, 'blur', 'E01_rim__mask_blur_small', [mask], size=p['rim_size'], filter=1)
+    rim = T.mix(net, 'E02_rim__mask_minus_blur', mask, mb1, 4)
+    rimp = T.node(net, 'clamp', 'E03_rim__positive_only', [rim], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    rimh = T.mix(net, 'E04_rim__scaled', rimp, T.const(net, 'E04a_const__rim_amp', t, p['rim_amp']), 5)
+    h = T.mix(net, 'E05_height__with_rim', h, T.mix(net, 'E05a_rim__outside_chip_only', rimh, T.lin(net, 'E05b_chip__inverse', mask, 0.0, 1.0, 1.0, 0.0), 5), 3)
+    # G hair cracks : thin dark wavy lines along the grain, two lengths ; paint has few, bare wood has many
+    keep2 = T.curve(net, 'G00_cracks__keep_off_groove', t, [(0.0, 0.0), (0.07, 0.3), (0.14, 1.0), (0.9, 1.0), (0.97, 0.3), (1.0, 0.0)], 1.0, 0.0, 1.0)
+    def cracks(tag, size, sx, off, width, amp):
+        n = noise(net, 'G%s_cracks__noise' % tag, t, 1.0, size, sx, off)
+        a = T.node(net, 'function', 'G%s_cracks__abs' % tag, [n], func=0, func_math=0)
+        line = T.smooth(net, 'G%s_cracks__line' % tag, a, 0.0, width, 1.0, 0.0)    # 1 on the line, 0 away
+        return T.mix(net, 'G%s_cracks__depth' % tag, line, T.const(net, 'G%sa_const__amp' % tag, t, amp), 5)
+    c1 = cracks('1', p['crack_size1'], p['crack_sx'], 41.3, p['crack_w1'], p['crack_amp'])
+    c2 = cracks('2', p['crack_size2'], p['crack_sx'] * 1.6, 57.9, p['crack_w2'], p['crack_amp'] * 0.8)
+    c3 = cracks('5', p['crack_size3'], p['crack_sx'] * 1.2, 83.7, p['crack_w3'], p['crack_amp3'])     # 10 October 2026 : third hairline scale, raises the gradient energy. FR : troisieme echelle de fissures fines.
+    cr = T.mix(net, 'G3_cracks__sum', T.mix(net, 'G3a_cracks__c1_c2', c1, c2, 3), c3, 3)
+    h = T.mix(net, 'G4_height__with_cracks', h, T.mix(net, 'G4a_cracks__off_groove', cr, keep2, 5), 4)
+    # F fine paint skin : low amplitude streaks only
+    f1 = noise(net, 'F01_grain__fine_streaks', t, p['fine_amp'], p['fine_size'], p['fine_sx'], 21.7)
+    f1d = T.mix(net, 'F02_grain__fine_scaled', f1, keep2, 5)
+    h = T.mix(net, 'F05_height__with_fine', h, f1d, 3)
+    out = T.node(net, 'clamp', 'Z00_height__final', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    return net, out

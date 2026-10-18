@@ -1,0 +1,87 @@
+# 11 October 2026 : measures the window height reference, to set the parameters of each layer.
+# EN: the reference is read, measured and never copied into a graph. Writes measures/ref_measures.json.
+# FR : la référence se mesure, elle ne se copie jamais dans le graphe ; les nombres règlent seulement les paramètres.
+import json
+import os
+
+import numpy as np
+from PIL import Image
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+REF = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/refs/window_height_ref.png'
+OUT = os.path.join(HERE, '..', 'measures', 'ref_measures.json')
+
+img = Image.open(REF)
+print('mode', img.mode, 'size', img.size)
+a = np.asarray(img.convert('L'), dtype=np.float64)
+h, w = a.shape
+
+
+def stats(x):
+    q = np.percentile(x, [1, 5, 25, 50, 75, 95, 99])
+    return {'mean': round(float(x.mean()), 2), 'std': round(float(x.std()), 2),
+            'p01': round(float(q[0]), 1), 'p05': round(float(q[1]), 1), 'p25': round(float(q[2]), 1),
+            'p50': round(float(q[3]), 1), 'p75': round(float(q[4]), 1), 'p95': round(float(q[5]), 1),
+            'p99': round(float(q[6]), 1)}
+
+
+# 11 October 2026 : row profile smoothed over 11 rows, then local minima are the joints between boards. FR : joints.
+row = a.mean(axis=1)
+k = 5
+sm = np.convolve(np.pad(row, k, mode='edge'), np.ones(2 * k + 1) / (2 * k + 1), mode='valid')
+R = 14
+cands = []
+for y in range(R, h - R):
+    seg = sm[y - R:y + R + 1]
+    if sm[y] <= seg.min():
+        left = sm[max(0, y - 40):y].max()
+        right = sm[y + 1:min(h, y + 41)].max()
+        depth = min(left, right) - sm[y]
+        if depth >= 6:
+            cands.append((float(depth), y))
+seams = []
+for depth, y in sorted(cands, reverse=True):
+    if all(abs(y - s['y']) > 12 for s in seams):
+        seams.append({'y': y, 'value': round(float(sm[y]), 2), 'depth': round(depth, 2)})
+seams.sort(key=lambda s: s['y'])
+
+regions = {
+    'top_planks': (0, w, 0, 232),
+    'plank_2': (0, w, 240, 408),
+    'rail': (0, w, 418, 546),
+    'mid_planks': (0, 510, 556, 716),
+    'square': (520, 750, 574, 712),
+    'louvers': (30, 1224, 738, h),
+    'bout_left': (0, 26, 738, h),
+    'bout_right': (1228, w, 738, h),
+}
+region_stats = {name: stats(a[y0:y1, x0:x1]) for name, (x0, x1, y0, y1) in regions.items()}
+
+# 11 October 2026 : columns of the louver ends, to read the width of the bevel. FR : biseau des bouts.
+louver_rows = a[738:h, :]
+col = louver_rows.mean(axis=0)
+left_profile = [round(float(col[x]), 1) for x in range(0, 64, 2)]
+right_profile = [round(float(col[x]), 1) for x in range(w - 64, w, 2)]
+
+out = {
+    'size': [w, h],
+    'mode': img.mode,
+    'global': stats(a),
+    'regions': region_stats,
+    'seams': seams,
+    'row_profile_every_8': [round(float(v), 1) for v in sm[::8]],
+    'louver_col_left_every_2': left_profile,
+    'louver_col_right_every_2': right_profile,
+    'grad_mean_abs_dy': round(float(np.abs(np.diff(a, axis=0)).mean()), 3),
+    'grad_mean_abs_dx': round(float(np.abs(np.diff(a, axis=1)).mean()), 3),
+}
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+with open(OUT, 'w', encoding='utf-8') as fh:
+    json.dump(out, fh, indent=1, ensure_ascii=False)
+
+print('global', out['global'])
+print('seams (y, value, depth):', [(s['y'], s['value'], s['depth']) for s in seams])
+for name, st in region_stats.items():
+    print('%-12s mean %6.2f std %6.2f p05 %6.1f p95 %6.1f' % (name, st['mean'], st['std'], st['p05'], st['p95']))
+print('louver left cols:', left_profile)
+print('grad dy %.3f dx %.3f' % (out['grad_mean_abs_dy'], out['grad_mean_abs_dx']))

@@ -1,0 +1,9 @@
+# 10 October 2026 : side-by-side sheet reference | built, full frame plus a 2x zoom crop. Usage: SideBySide.py <name> <built.png> <out.png> [x0 y0 size]. FR : planche reference / construit.
+import sys
+from PIL import Image
+B = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+name, built, out = sys.argv[1:4]
+x0, y0, sz = (int(v) for v in sys.argv[4:7]) if len(sys.argv) >= 7 else (0, 0, 600)
+a = Image.open(B + 'refs/%s_height_ref.png' % name).convert('L'); b = Image.open(built).convert('L').resize(a.size)
+ca, cb = a.crop((x0, y0, x0 + sz, y0 + sz)).resize((700, 700)), b.crop((x0, y0, x0 + sz, y0 + sz)).resize((700, 700))
+s = Image.new('L', (1400 + 10, 700), 128); s.paste(ca, (0, 0)); s.paste(cb, (710, 0)); s.save(out)

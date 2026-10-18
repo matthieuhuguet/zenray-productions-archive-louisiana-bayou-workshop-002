@@ -1,0 +1,4313 @@
+{
+ "missing": [
+  "composite",
+  "voronoi",
+  "noise",
+  "grunge",
+  "kuwahara",
+  "levels",
+  "transform",
+  "mask",
+  "merge",
+  "copy",
+  "line",
+  "circle"
+ ],
+ "nodes": {
+  "constant": {
+   "inputs": 2,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scopergba": {
+     "type": "Int",
+     "value": 15
+    },
+    "f1": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f21": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f22": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f3r": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f3g": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f3b": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f4r": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f4g": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f4b": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f4a": {
+     "type": "Float",
+     "value": 1.0
+    }
+   }
+  },
+  "ramp": {
+   "inputs": 3,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "f3",
+     "menu": [
+      "f1",
+      "f3"
+     ]
+    },
+    "rampType": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "horizontal",
+      "vertical",
+      "radial",
+      "concentric"
+     ]
+    },
+    "cycles": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "phase": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "method": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "clamp",
+      "repeat",
+      "mirror"
+     ]
+    },
+    "sizemethod": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "frame",
+      "twopt"
+     ]
+    },
+    "centerx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "centery": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rotation": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "startposx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "startposy": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "endposx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "endposy": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "rampmono": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "ramp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cr": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cg": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cb": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "ramp2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cr": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "rampmono1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rampmono1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rampmono1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "rampmono2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "rampmono2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "rampmono2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "remap": {
+   "inputs": 7,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scopergba": {
+     "type": "Int",
+     "value": 15
+    },
+    "op": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "remap",
+      "threshold"
+     ]
+    },
+    "computerange": {
+     "type": "Button",
+     "value": "0"
+    },
+    "side": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "greater",
+      "greaterequal",
+      "less",
+      "lessequal"
+     ]
+    },
+    "threshold": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "width": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "inputmin": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "inputmax": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "outputmin": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "outputmax": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "method": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "clamp",
+      "repeat",
+      "extend"
+     ]
+    },
+    "useramp": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "ramp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "ramp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "ramp2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "blend": {
+   "inputs": 3,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "space": {
+     "type": "Menu",
+     "value": 3,
+     "menu": [
+      "image",
+      "texture",
+      "pixel",
+      "world"
+     ]
+    },
+    "border": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "auto",
+      "constant",
+      "clamp",
+      "mirror",
+      "wrap",
+      "clip"
+     ]
+    },
+    "filter": {
+     "type": "Menu",
+     "value": 2,
+     "menu": [
+      "point",
+      "bilinear",
+      "box",
+      "triangle",
+      "cubic",
+      "mitchell",
+      "bspline"
+     ]
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scopergba": {
+     "type": "Int",
+     "value": 15
+    },
+    "mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "blend",
+      "over",
+      "under",
+      "add",
+      "subtract",
+      "multiply",
+      "divide",
+      "screen",
+      "hypot",
+      "diff",
+      "exclusion",
+      "sharpen",
+      "max",
+      "min",
+      "overlay",
+      "softlight"
+     ]
+    },
+    "alpha": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "swap": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "uselength": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "clipbydata": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "crop": {
+     "type": "Toggle",
+     "value": 0
+    }
+   }
+  },
+  "function": {
+   "inputs": 2,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "shift": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "func": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "math",
+      "pow",
+      "trig"
+     ]
+    },
+    "func_math": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "abs",
+      "sign",
+      "normalize",
+      "negate",
+      "invert",
+      "floor",
+      "round",
+      "ceil",
+      "modulus"
+     ]
+    },
+    "func_pow": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "sqrt",
+      "powx",
+      "powb",
+      "ex",
+      "log",
+      "ln"
+     ]
+    },
+    "func_trig": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "sin",
+      "cos",
+      "tan",
+      "asin",
+      "acos",
+      "atan",
+      "sinh",
+      "cosh",
+      "tanh"
+     ]
+    },
+    "angleunit": {
+     "type": "Menu",
+     "value": 2,
+     "menu": [
+      "rad",
+      "deg",
+      "tau"
+     ]
+    },
+    "base": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "exponent": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "modbase": {
+     "type": "Float",
+     "value": 1.0
+    }
+   }
+  },
+  "fractalnoise": {
+   "inputs": 5,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "default"
+    },
+    "settypeinfo": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "typeinfo": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "none",
+      "color",
+      "position",
+      "vector",
+      "normal",
+      "offsetnormal",
+      "texturecoord",
+      "id",
+      "mask",
+      "sdf",
+      "height"
+     ]
+    },
+    "folder1": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "amp": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "center": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "contrast": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder2": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "noisetype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "torus",
+      "perlin",
+      "worleyA",
+      "worleyB",
+      "white",
+      "alligator",
+      "sparse"
+     ]
+    },
+    "percomp": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "metric": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "euclidean",
+      "manhattan",
+      "chebyshev"
+     ]
+    },
+    "jitter": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "elementsize": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "elementsizetype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "BUTTONS_decompose_transforms"
+     ]
+    },
+    "elementscalex": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "elementscaley": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "offx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "offy": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "dotiled": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "tilesizex": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "tilesizey": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "use3d": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "folder3": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "animate": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "pulselength": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "timeoffset": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "timescale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "doloop": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "looplen": {
+     "type": "Float",
+     "value": 10.0
+    },
+    "folder0": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "fractaltype": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "none",
+      "sharp",
+      "dampened",
+      "terrain",
+      "hybrid"
+     ]
+    },
+    "oct": {
+     "type": "Float",
+     "value": 8.0
+    },
+    "lac": {
+     "type": "Float",
+     "value": 2.01234
+    },
+    "rough": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "octaveoffsetx": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "octaveoffsety": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "folder4": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "post_dofold": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_docomplement": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_dobias": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_bias": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "post_dogain": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_gain": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "post_dogamma": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_gamma": {
+     "type": "Float",
+     "value": 2.2
+    },
+    "post_docontrast": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_contrast": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "post_doclampmin": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_minimum": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "post_doclampmax": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_maximum": {
+     "type": "Float",
+     "value": 1.0
+    }
+   }
+  },
+  "streakblur": {
+   "inputs": 4,
+   "parms": {
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "border": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "auto",
+      "constant",
+      "clamp",
+      "mirror",
+      "wrap"
+     ]
+    },
+    "dirtype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "angle",
+      "coord"
+     ]
+    },
+    "dirx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "diry": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "normalizedir": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "angle": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "units": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "image",
+      "pixels"
+     ]
+    },
+    "length": {
+     "type": "Float",
+     "value": 0.05
+    },
+    "length_pixels": {
+     "type": "Float",
+     "value": 3.0
+    },
+    "bias": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "on",
+      "min",
+      "max"
+     ]
+    },
+    "usestreakweight": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "streakweight": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "streakweight1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "streakweight1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "streakweight1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "streakweight2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "streakweight2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "streakweight2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "blur": {
+   "inputs": 2,
+   "parms": {
+    "filter": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "box",
+      "gaussian"
+     ]
+    },
+    "readoutside": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "units": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "image",
+      "pixels",
+      "local"
+     ]
+    },
+    "size": {
+     "type": "Float",
+     "value": 0.005
+    },
+    "size_pixel": {
+     "type": "Float",
+     "value": 3.0
+    },
+    "size_local": {
+     "type": "Float",
+     "value": 0.005
+    },
+    "scalesx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalesy": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalebytimeinc": {
+     "type": "Toggle",
+     "value": 0
+    }
+   }
+  },
+  "channelextract": {
+   "inputs": 1,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "channel": {
+     "type": "Int",
+     "value": 0,
+     "menu": [
+      "0",
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   }
+  },
+  "monotorgb": {
+   "inputs": 2,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "computerange": {
+     "type": "Button",
+     "value": "0"
+    },
+    "inputmin": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "inputmax": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "outputmin": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "outputmax": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalebyvalue": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "method": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "clamp",
+      "repeat"
+     ]
+    },
+    "ramp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "ramp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cr": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cg": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1cb": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ramp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "ramp2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cr": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2cb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "ramp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "heighttonormal": {
+   "inputs": 1,
+   "parms": {
+    "normaltype": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "signed",
+      "offset"
+     ]
+    },
+    "scale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "folder0": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "readoutside": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "kernel": {
+     "type": "Int",
+     "value": 1
+    }
+   }
+  },
+  "heighttoambientocclusion": {
+   "inputs": 1,
+   "parms": {
+    "height": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "heightscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "quality": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "space": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "image",
+      "pixel",
+      "local"
+     ]
+    },
+    "viewradius": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "viewradius_pixel": {
+     "type": "Float",
+     "value": 20.0
+    },
+    "viewradius_local": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "stepscale": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "axiscount": {
+     "type": "Int",
+     "value": 20
+    },
+    "dohemisphere": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "remap": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "remap1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "remap1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "remap1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "remap2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "remap2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "remap2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "turingpatterns": {
+   "inputs": 3,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scopergba": {
+     "type": "Int",
+     "value": 15
+    },
+    "filter": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "box",
+      "gaussian"
+     ]
+    },
+    "readoutside": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "units": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "image",
+      "pixels"
+     ]
+    },
+    "iterations": {
+     "type": "Int",
+     "value": 20
+    },
+    "radius": {
+     "type": "Float",
+     "value": 0.02
+    },
+    "radius_pixel": {
+     "type": "Float",
+     "value": 3.0
+    },
+    "power": {
+     "type": "Float",
+     "value": 15.0
+    },
+    "gain": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalesx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalesy": {
+     "type": "Float",
+     "value": 1.0
+    }
+   }
+  },
+  "worleynoise": {
+   "inputs": 2,
+   "parms": {
+    "settypeinfo": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "typeinfo": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "none",
+      "color",
+      "position",
+      "vector",
+      "normal",
+      "offsetnormal",
+      "texturecoord",
+      "id",
+      "mask",
+      "sdf",
+      "height"
+     ]
+    },
+    "elementsize": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "elementsizetype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "BUTTONS_decompose_transforms"
+     ]
+    },
+    "elementscalex": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "elementscaley": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "jitter": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "jittertype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "BUTTONS_decompose_transforms"
+     ]
+    },
+    "jitterscalex": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "jitterscaley": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "lattice": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "grid",
+      "hex"
+     ]
+    },
+    "metric": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "euclidean",
+      "manhattan",
+      "chebyshev"
+     ]
+    },
+    "roundborder": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "offx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "offy": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "dotiled": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "tilesizex": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "tilesizey": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "folder4": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "post_docomplement": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_dobias": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_bias": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "post_dogain": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_gain": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "post_dogamma": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_gamma": {
+     "type": "Float",
+     "value": 2.2
+    },
+    "post_docontrast": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_contrast": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "post_doclampmin": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_minimum": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "post_doclampmax": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "post_maximum": {
+     "type": "Float",
+     "value": 1.0
+    }
+   }
+  },
+  "distort": {
+   "inputs": 4,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "border": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "auto",
+      "constant",
+      "clamp",
+      "mirror",
+      "wrap"
+     ]
+    },
+    "filter": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "point",
+      "bilinear",
+      "box",
+      "triangle",
+      "cubic",
+      "mitchell",
+      "bspline"
+     ]
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "dirtype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "angle",
+      "coord"
+     ]
+    },
+    "dirx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "diry": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "normalizedir": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "angle": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "scale": {
+     "type": "Float",
+     "value": 0.005
+    },
+    "scalebytimeinc": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "streak": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "off",
+      "on",
+      "min",
+      "max"
+     ]
+    },
+    "usestreakweight": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "streakweight": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "usecfl": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "cfl": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "maxsteps": {
+     "type": "Int",
+     "value": 100
+    },
+    "streakweight1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "streakweight1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "streakweight1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "streakweight2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "streakweight2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "streakweight2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "mirror": {
+   "inputs": 1,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mode": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "0",
+      "1"
+     ]
+    },
+    "planes": {
+     "type": "Folder",
+     "value": 1
+    },
+    "numberplanes": {
+     "type": "Int",
+     "value": 1
+    },
+    "flip": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "angle": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "offset": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "angle0": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "offset0": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "flip0": {
+     "type": "Toggle",
+     "value": 0
+    }
+   }
+  },
+  "tilepattern": {
+   "inputs": 3,
+   "parms": {
+    "folder01": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "folder4": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "tiledsizex": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "tiledsizey": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "cliptosize": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "patterntype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "stackbond",
+      "headerbond",
+      "stretcherbond",
+      "flemishbond",
+      "americanbond",
+      "monkbond",
+      "englishbond",
+      "denglishbond",
+      "windmill",
+      "crosshatch",
+      "basketwave",
+      "hopscotch",
+      "herringbonen1",
+      "herringbone32",
+      "frenchpattern",
+      "custom"
+     ]
+    },
+    "patternmode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "seamless",
+      "tilecount",
+      "tilesize"
+     ]
+    },
+    "stackbond_div": {
+     "type": "Int",
+     "value": 10
+    },
+    "stackbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "stackbond_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "stackbond_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "stackbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "headerbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "headerbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "headerbond_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "headerbond_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "headerbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "stretcherbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "stretcherbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "stretcherbond_cols": {
+     "type": "Int",
+     "value": 5
+    },
+    "stretcherbond_tilewidth": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "stretcherbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "flemishbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "flemishbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "flemishbond_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "flemishbond_tilewidth": {
+     "type": "Float",
+     "value": 0.266667
+    },
+    "flemishbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "americanbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "americanbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "americanbond_cols": {
+     "type": "Int",
+     "value": 5
+    },
+    "americanbond_tilewidth": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "americanbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "monkbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "monkbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "monkbond_cols": {
+     "type": "Int",
+     "value": 5
+    },
+    "monkbond_tilewidth": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "monkbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "englishbond_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "englishbond_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "englishbond_cols": {
+     "type": "Int",
+     "value": 5
+    },
+    "englishbond_tilewidth": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "englishbond_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "denglishbond_div": {
+     "type": "Int",
+     "value": 4
+    },
+    "denglishbond_rows": {
+     "type": "Int",
+     "value": 8
+    },
+    "denglishbond_cols": {
+     "type": "Int",
+     "value": 4
+    },
+    "denglishbond_tilewidth": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "denglishbond_tileheight": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "windmill_div": {
+     "type": "Int",
+     "value": 10
+    },
+    "windmill_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "windmill_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "windmill_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "windmill_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "windmill_iris": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "crosshatch_div": {
+     "type": "Int",
+     "value": 6
+    },
+    "crosshatch_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "crosshatch_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "crosshatch_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "crosshatch_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "crosshatch_rowdiv": {
+     "type": "Int",
+     "value": 1
+    },
+    "crosshatch_coldiv": {
+     "type": "Int",
+     "value": 1
+    },
+    "basketwave_div": {
+     "type": "Int",
+     "value": 5
+    },
+    "basketwave_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "basketwave_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "basketwave_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "basketwave_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "basketwave_rowthickness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "basketwave_colthickness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "basketwave_drawsquarebonds": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "hopscotch_div": {
+     "type": "Int",
+     "value": 2
+    },
+    "hopscotch_rows": {
+     "type": "Int",
+     "value": 10
+    },
+    "hopscotch_cols": {
+     "type": "Int",
+     "value": 10
+    },
+    "hopscotch_tilewidth": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "hopscotch_tileheight": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "herringbonen1_div": {
+     "type": "Int",
+     "value": 5
+    },
+    "herringbonen1_tilecount": {
+     "type": "Int",
+     "value": 10
+    },
+    "herringbonen1_tilesize": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "herringbonen1_ration": {
+     "type": "Int",
+     "value": 2
+    },
+    "herringbone32_div": {
+     "type": "Int",
+     "value": 3
+    },
+    "herringbone32_tilecount": {
+     "type": "Int",
+     "value": 12
+    },
+    "herringbone32_tilesize": {
+     "type": "Float",
+     "value": 0.166667
+    },
+    "frenchpattern_div": {
+     "type": "Int",
+     "value": 3
+    },
+    "frenchpattern_rows": {
+     "type": "Int",
+     "value": 3
+    },
+    "frenchpattern_cols": {
+     "type": "Int",
+     "value": 3
+    },
+    "frenchpattern_tilewidth": {
+     "type": "Float",
+     "value": 0.666666
+    },
+    "frenchpattern_tileheight": {
+     "type": "Float",
+     "value": 0.666666
+    },
+    "flippattern": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "useexpr": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "expr": {
+     "type": "String",
+     "value": "// Pattern Syntax: Rows and Columns repeat until the image is fully tiled.\n// Each row is definied in a new line using the following format:\n// [row_offset] [row_height] | [col_width1] [col_width2] ...\n//\n// Use the additional flags followed by a value for advanced pattern creation:\n// [row_offset] [row_height] -s #.# | [col_width1 -h #.# -o #.# -v # -r #.#] [col_width2] ... -r #\n// -s (or --slide): Continous offset for each row that is multiplied by the row number.\n// -h (or --height): This will overwrite the height of the column in the row, ignoring row height.\n// -o (or --offset): The vertical offset of a column in the row.\n// -v (or --visible): Whenever the column in the row is visible or not.\n// -r (or --rotate): The rotation of the column in the row.\n// -r (or --reflect): When columns need to repeat, start always from the first entry or from the last.\n\n[0.0] [0.2] | [0.2]"
+    },
+    "nrows": {
+     "type": "Folder",
+     "value": 1
+    },
+    "folder8": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "shapeclass": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "basic",
+      "marker",
+      "compound"
+     ]
+    },
+    "useaspectratio": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "basictype": {
+     "type": "String",
+     "value": "rect",
+     "menu": [
+      "circle",
+      "diamond",
+      "line",
+      "rect",
+      "regpolygon",
+      "spiral",
+      "squircle",
+      "star",
+      "trapezoid",
+      "triangle",
+      "circlewave"
+     ]
+    },
+    "markertype": {
+     "type": "String",
+     "value": "masterisk",
+     "menu": [
+      "masterisk",
+      "mcheck",
+      "mchevron",
+      "mclobber",
+      "mcross",
+      "minfinity",
+      "mring",
+      "mt",
+      "mtag"
+     ]
+    },
+    "compoundtype": {
+     "type": "String",
+     "value": "archway",
+     "menu": [
+      "archway",
+      "arrow",
+      "cross",
+      "egg",
+      "fishscale",
+      "horseshoe",
+      "moon",
+      "octagondot",
+      "roundedx",
+      "vesica"
+     ]
+    },
+    "folder10": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "circle_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "circle_doarc": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "circle_arc": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "circle_dothickness": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "circle_thickness": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "circle_roundends": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "circle_quadratic": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "diamond_sizex": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "diamond_sizey": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "line_length": {
+     "type": "Float",
+     "value": 1.6
+    },
+    "line_usepoints": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "line_pt0x": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "line_pt0y": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "line_pt1x": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "line_pt1y": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "line_addthickness": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "line_sthickness": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "line_ethickness": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "line_dobulge": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "line_bulge": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rect_sizex": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "rect_sizey": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "rect_round": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "rect_roundness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "rect_doseproundness": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "rect_tlroundness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "rect_trroundness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "rect_blroundness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "rect_brroundness": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "regpolygon_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "regpolygon_sides": {
+     "type": "Int",
+     "value": 6
+    },
+    "spiral_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "spiral_arclen": {
+     "type": "Float",
+     "value": 0.85
+    },
+    "spiral_arcnum": {
+     "type": "Int",
+     "value": 8
+    },
+    "squircle_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "squircle_blend": {
+     "type": "Float",
+     "value": 5.0
+    },
+    "star_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "star_sides": {
+     "type": "Int",
+     "value": 5
+    },
+    "star_anglefactor": {
+     "type": "Float",
+     "value": 3.0
+    },
+    "trapezoid_height": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "trapezoid_blength": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "trapezoid_tlength": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "triangle_width": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "triangle_height": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "triangle_usepoints": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "triangle_pt0x": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "triangle_pt0y": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "triangle_pt1x": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "triangle_pt1y": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "triangle_pt2x": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "triangle_pt2y": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "circlewave_arc": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "circlewave_freq": {
+     "type": "Float",
+     "value": 6.0
+    },
+    "folder11": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "marker_asterisk_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "marker_check_size": {
+     "type": "Float",
+     "value": 0.7
+    },
+    "marker_chevron_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "marker_clobber_size": {
+     "type": "Float",
+     "value": 0.9
+    },
+    "marker_cross_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "marker_infinity_size": {
+     "type": "Float",
+     "value": 0.85
+    },
+    "marker_ring_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "marker_tag_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "marker_t_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "folder12": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "archway_width": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "archway_height": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "arrow_length": {
+     "type": "Float",
+     "value": 2.0
+    },
+    "arrow_usepoints": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "arrow_pt0x": {
+     "type": "Float",
+     "value": -1.0
+    },
+    "arrow_pt0y": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "arrow_pt1x": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "arrow_pt1y": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "arrow_shaft_thickness": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "arrow_head_thickness": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "arrow_head_ratio": {
+     "type": "Float",
+     "value": 0.3
+    },
+    "cross_size": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "cross_inset": {
+     "type": "Float",
+     "value": 0.6
+    },
+    "cross_bevel": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "egg_radius": {
+     "type": "Float",
+     "value": 0.6
+    },
+    "egg_roundness": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "fishscale_thickness": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "horseshoe_size": {
+     "type": "Float",
+     "value": 0.7
+    },
+    "horseshoe_separation": {
+     "type": "Float",
+     "value": 0.4
+    },
+    "horseshoe_length": {
+     "type": "Float",
+     "value": 0.45
+    },
+    "horseshoe_thickness": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "moon_outter_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "moon_inner_radius": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "moon_inner_offset": {
+     "type": "Float",
+     "value": 0.75
+    },
+    "octagondot_thickness": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "roundedx_size": {
+     "type": "Float",
+     "value": 1.6
+    },
+    "roundedx_width": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "vesica_radius": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "vesica_roundness": {
+     "type": "Float",
+     "value": 0.35
+    },
+    "folder13": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "draw": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "filled",
+      "dist",
+      "gradient",
+      "outline"
+     ]
+    },
+    "fadedist": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "gradientrotate": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gradienttype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "horizontal",
+      "vertical",
+      "radial",
+      "concentric"
+     ]
+    },
+    "gradientramp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "outlinewidth": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "cutout_edgefilter": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "doaa": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "folder9": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "filter": {
+     "type": "Menu",
+     "value": 2,
+     "menu": [
+      "point",
+      "bilinear",
+      "box",
+      "triangle",
+      "cubic",
+      "mitchell",
+      "bspline"
+     ]
+    },
+    "blend": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "sorted",
+      "unsorted",
+      "add",
+      "subtract",
+      "multiply",
+      "max",
+      "min"
+     ]
+    },
+    "randstamporder": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "randstamporderseed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder5": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "value_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "value_var": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "value_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "bgvalue": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder1": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "rowoffset": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "coloffset": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rowslideoffset": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rowslideoffset_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "rowslideoffset_var": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "rowslideoffset_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "doposjitter": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "posjitter": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "dohposjitter": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "hposjitter": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "dovposjitter": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "vposjitter": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "posjitterseed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder3": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "grotate": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rotate": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rotate_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "rotate_var": {
+     "type": "Float",
+     "value": 45.0
+    },
+    "rotate_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rotate_chb": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "orienttiles": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "folder2": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "scale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scale_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "scale_var": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "scale_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "hscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "hscale_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "hscale_var": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "hscale_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "vscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "vscale_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "vscale_var": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "vscale_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "doinset": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "inset": {
+     "type": "Float",
+     "value": 0.005
+    },
+    "inset_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "inset_var": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "inset_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder7": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "dothresholdselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "tileorder": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "none",
+      "rev",
+      "seed",
+      "shif"
+     ]
+    },
+    "tilethreshold": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "reversethresholdselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "thresholdrandseed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "thresholdshiftoffset": {
+     "type": "Int",
+     "value": 0
+    },
+    "doidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "idselection": {
+     "type": "Int",
+     "value": 2
+    },
+    "reverseidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "dorowidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "rowidselection": {
+     "type": "Int",
+     "value": 2
+    },
+    "reverserowidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "docolumnidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "columnidselection": {
+     "type": "Int",
+     "value": 2
+    },
+    "reversecolumnidselection": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "docheckerboard": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "labelparm": {
+     "type": "Label",
+     "value": ""
+    },
+    "reversecheckerboard": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "negate": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "folder6": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "splittiles": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "dosplititer": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "nsplititers": {
+     "type": "Int",
+     "value": 3
+    },
+    "doareathreshold": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "areathreshold": {
+     "type": "Float",
+     "value": 0.01
+    },
+    "splittreshold": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "nsplits": {
+     "type": "Int",
+     "value": 1
+    },
+    "nsplits_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "nsplits_var": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "nsplits_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "splitjitter": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "splitjitter_mode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "varying"
+     ]
+    },
+    "splitjitter_var": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "splitjitter_seed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "split_orientratio": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "splittresholdseed": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rowvisibility1": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "folder2_1": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "rowoffset1": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rowreflect1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "rowslideoffset1": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "rowheight1": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "ncolumns1": {
+     "type": "Folder",
+     "value": 1
+    },
+    "colvisibility1_1": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "folder2_1_1": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "colwidth1_1": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "docolheight1_1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "colheight1_1": {
+     "type": "Float",
+     "value": 0.2
+    },
+    "docoloffset1_1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "coloffset1_1": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "docolrot1_1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "colrot1_1": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gradientramp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gradientramp1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gradientramp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "gradientramp2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "gradientramp2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "gradientramp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  },
+  "edgedetect": {
+   "inputs": 1,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mode": {
+     "type": "Int",
+     "value": 0,
+     "menu": [
+      "0",
+      "1"
+     ]
+    },
+    "method": {
+     "type": "Int",
+     "value": 0,
+     "menu": [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4"
+     ]
+    },
+    "normalize": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "preblur": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "lowthr": {
+     "type": "Float",
+     "value": 0.001
+    },
+    "highthr": {
+     "type": "Float",
+     "value": 0.1
+    }
+   }
+  },
+  "clamp": {
+   "inputs": 4,
+   "parms": {
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scopergba": {
+     "type": "Int",
+     "value": 15
+    },
+    "computerange": {
+     "type": "Button",
+     "value": "0"
+    },
+    "dolowerlimit": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "lowerlimit": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "doupperlimit": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "upperlimit": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "method": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "clamp",
+      "black",
+      "soft"
+     ]
+    },
+    "softclipdir": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "inside",
+      "outside"
+     ]
+    },
+    "softcliprange": {
+     "type": "Float",
+     "value": 0.1
+    }
+   }
+  },
+  "null": {
+   "inputs": 2048,
+   "parms": {
+    "outputs": {
+     "type": "Folder",
+     "value": 0
+    }
+   }
+  },
+  "output": {
+   "inputs": 2048,
+   "parms": {}
+  },
+  "hsv": {
+   "inputs": 5,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "op": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "adjust",
+      "to_hsv",
+      "to_rgb"
+     ]
+    },
+    "hueshift": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "hueshiftmode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "minmax",
+      "width"
+     ]
+    },
+    "hueshiftmin": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "hueshiftmax": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "hueshiftwidth": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "keepluma": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "satscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "satshift": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "valscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "valshift": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "ispremult": {
+     "type": "Toggle",
+     "value": 1
+    }
+   }
+  },
+  "mono": {
+   "inputs": 1,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "op": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "lum",
+      "ntsclum",
+      "hdtvlum",
+      "average",
+      "max",
+      "min",
+      "magnitude",
+      "hue",
+      "saturation",
+      "value",
+      "red",
+      "green",
+      "blue",
+      "comp4",
+      "custom"
+     ]
+    },
+    "weightr": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "weightg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "weightb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "weighta": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "normalizeweight": {
+     "type": "Toggle",
+     "value": 1
+    }
+   }
+  },
+  "rop_image": {
+   "inputs": 1,
+   "parms": {
+    "execute": {
+     "type": "Button",
+     "value": "0"
+    },
+    "renderpreview": {
+     "type": "Button",
+     "value": "0"
+    },
+    "executebackground": {
+     "type": "Button",
+     "value": "0"
+    },
+    "trange": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "off",
+      "normal",
+      "on"
+     ]
+    },
+    "f1": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "f2": {
+     "type": "Float",
+     "value": 240.0
+    },
+    "f3": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "setudim": {
+     "type": "Menu",
+     "value": 3,
+     "menu": [
+      "context",
+      "explicit",
+      "on",
+      "off"
+     ]
+    },
+    "udim1": {
+     "type": "Int",
+     "value": 1001
+    },
+    "udim2": {
+     "type": "Int",
+     "value": 1001
+    },
+    "udimlist": {
+     "type": "String",
+     "value": ""
+    },
+    "take": {
+     "type": "String",
+     "value": "_current_"
+    },
+    "coppath": {
+     "type": "String",
+     "value": ""
+    },
+    "copoutput": {
+     "type": "String",
+     "value": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/SimpleHeight/Scripts/comp/untitled.p_rop_image.0001.exr"
+    },
+    "docompile": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "setres": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "res1": {
+     "type": "Int",
+     "value": 1024
+    },
+    "res2": {
+     "type": "Int",
+     "value": 1024
+    },
+    "resmenu": {
+     "type": "Menu",
+     "value": 0
+    },
+    "setpixelscale": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "pixelscale": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "setborder": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "border": {
+     "type": "Menu",
+     "value": 3,
+     "menu": [
+      "constant",
+      "clamp",
+      "mirror",
+      "wrap"
+     ]
+    },
+    "setprecision": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "precision": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "b16",
+      "b32"
+     ]
+    },
+    "colorconversion": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "ocio",
+      "bakeocio",
+      "raw"
+     ]
+    },
+    "ociocolorspace": {
+     "type": "String",
+     "value": "Automatic"
+    },
+    "ociolook": {
+     "type": "String",
+     "value": "None"
+    },
+    "ociodisplay": {
+     "type": "String",
+     "value": "Default"
+    },
+    "ocioview": {
+     "type": "String",
+     "value": "Default"
+    },
+    "saveretry": {
+     "type": "Int",
+     "value": 0
+    },
+    "reloadfiles": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "stdswitcher1": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "addaovs": {
+     "type": "Button",
+     "value": "0"
+    },
+    "outputaovs": {
+     "type": "Folder",
+     "value": 1
+    },
+    "mkpath": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "initsim": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "alfprogress": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "savebackground": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "exportattribs": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "attribfilter": {
+     "type": "String",
+     "value": ""
+    },
+    "vm_image_artist": {
+     "type": "String",
+     "value": ""
+    },
+    "vm_image_comment": {
+     "type": "String",
+     "value": ""
+    },
+    "vm_image_hostname": {
+     "type": "String",
+     "value": ""
+    },
+    "vm_image_mplay_label": {
+     "type": "String",
+     "value": ""
+    },
+    "vm_image_mplay_gamma": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "mktx": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "txtilesize1": {
+     "type": "Int",
+     "value": 64
+    },
+    "txtilesize2": {
+     "type": "Int",
+     "value": 64
+    },
+    "txmipmapfilter": {
+     "type": "String",
+     "value": "box",
+     "menu": [
+      "box",
+      "gaussian",
+      "point",
+      "sinc",
+      "bartlett",
+      "blackman",
+      "catrom",
+      "hanning",
+      "mitchell"
+     ]
+    },
+    "txopaquedetect": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "vm_image_jpeg_quality": {
+     "type": "Int",
+     "value": 100
+    },
+    "vm_image_tiff_compression": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "None",
+      "LZW",
+      "AdobeDeflate",
+      "PackBits",
+      "JPEG",
+      "PixarLog",
+      "SGILog",
+      "SGILog24",
+      "LZMA",
+      "Zstd"
+     ]
+    },
+    "vm_image_exr_compression": {
+     "type": "Menu",
+     "value": 3,
+     "menu": [
+      "none",
+      "rle",
+      "zips",
+      "zip",
+      "piz",
+      "pix",
+      "b44",
+      "b44a",
+      "dwaa",
+      "dwab"
+     ]
+    },
+    "dwa_compression": {
+     "type": "Int",
+     "value": 85
+    },
+    "pngtga_alpha_multiplication": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "premult",
+      "unpremult"
+     ]
+    },
+    "tprerender": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "prerender": {
+     "type": "String",
+     "value": ""
+    },
+    "lprerender": {
+     "type": "String",
+     "value": "hscript",
+     "menu": [
+      "hscript",
+      "python"
+     ]
+    },
+    "tpreframe": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "preframe": {
+     "type": "String",
+     "value": ""
+    },
+    "lpreframe": {
+     "type": "String",
+     "value": "hscript",
+     "menu": [
+      "hscript",
+      "python"
+     ]
+    },
+    "tpostframe": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "postframe": {
+     "type": "String",
+     "value": ""
+    },
+    "lpostframe": {
+     "type": "String",
+     "value": "hscript",
+     "menu": [
+      "hscript",
+      "python"
+     ]
+    },
+    "tpostwrite": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "postwrite": {
+     "type": "String",
+     "value": ""
+    },
+    "lpostwrite": {
+     "type": "String",
+     "value": "hscript",
+     "menu": [
+      "hscript",
+      "python"
+     ]
+    },
+    "tpostrender": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "postrender": {
+     "type": "String",
+     "value": ""
+    },
+    "lpostrender": {
+     "type": "String",
+     "value": "hscript",
+     "menu": [
+      "hscript",
+      "python"
+     ]
+    },
+    "aov1": {
+     "type": "String",
+     "value": "C"
+    },
+    "size1": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "auto",
+      "int8",
+      "int16",
+      "int32",
+      "float16",
+      "float32"
+     ]
+    },
+    "raw1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "useport1": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "port1": {
+     "type": "Int",
+     "value": 0
+    }
+   }
+  },
+  "sharpen": {
+   "inputs": 3,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "auto"
+    },
+    "mask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "units": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "image",
+      "pixels"
+     ]
+    },
+    "readoutside": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "sizeimage": {
+     "type": "Float",
+     "value": 0.01
+    },
+    "sizepixel": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalesx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalesy": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "amplitude": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "gain": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "threshold": {
+     "type": "Float",
+     "value": 0.0
+    }
+   }
+  },
+  "shapescatter": {
+   "inputs": 12,
+   "parms": {
+    "signature": {
+     "type": "String",
+     "value": "default"
+    },
+    "linkstamps": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "stampsxy": {
+     "type": "Int",
+     "value": 10
+    },
+    "stampsx": {
+     "type": "Int",
+     "value": 5
+    },
+    "stampsy": {
+     "type": "Int",
+     "value": 10
+    },
+    "folder11": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "seed": {
+     "type": "Int",
+     "value": 0
+    },
+    "folderscale": {
+     "type": "FolderSet",
+     "value": 1
+    },
+    "stampscaling": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "image",
+      "tile"
+     ]
+    },
+    "scalemask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalemode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "variance",
+      "minmax"
+     ]
+    },
+    "scale": {
+     "type": "Float",
+     "value": 0.1
+    },
+    "scale_tile": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "scalevariance": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "minscale": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "maxscale": {
+     "type": "Float",
+     "value": 1.5
+    },
+    "folderjitter": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "jittermask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "relaxstrength": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "applyjitterlate": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "jitter": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "jittertype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "BUTTONS_decompose_transforms"
+     ]
+    },
+    "jitterscalex": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "jitterscaley": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "folderrotation": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "anglemask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "directionmask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "angle": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "anglemode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "variance",
+      "minmax"
+     ]
+    },
+    "anglevariance": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "minangle": {
+     "type": "Float",
+     "value": -180.0
+    },
+    "maxangle": {
+     "type": "Float",
+     "value": 180.0
+    },
+    "roundto": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "roundtomultiples": {
+     "type": "Float",
+     "value": 45.0
+    },
+    "folderstretch": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "stretchmask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "stretchmode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "variance",
+      "minmax"
+     ]
+    },
+    "stretchx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "stretchy": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "randompercomp": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "stretchvariancex": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "stretchvariancey": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "minstretchx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "minstretchy": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "maxstretchx": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "maxstretchy": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "folderdensity": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "densitymask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "density": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "blend": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "sorted",
+      "unsorted",
+      "add",
+      "subtract",
+      "multiply",
+      "max",
+      "min"
+     ]
+    },
+    "usesortlayer": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "treatmonoasalpha": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "foldercolor": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "colorseed": {
+     "type": "Int",
+     "value": 0
+    },
+    "colormask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorr": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colormode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "variance",
+      "ramp"
+     ]
+    },
+    "colorramp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "huevariance": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "saturationvariance": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "valuevariance": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder2": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "alphamask": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "alpha": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "alphamode": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "uniform",
+      "variance",
+      "ramp"
+     ]
+    },
+    "alphavariance": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "alpharamp": {
+     "type": "Ramp",
+     "value": "Ramp"
+    },
+    "backgroundfolder": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "bgr": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "bgg": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "bgb": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "bgalpha": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "folder0": {
+     "type": "FolderSet",
+     "value": 0
+    },
+    "selectmode": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "cycle",
+      "random",
+      "layer"
+     ]
+    },
+    "limitstamps": {
+     "type": "Toggle",
+     "value": 0
+    },
+    "stampcount": {
+     "type": "Int",
+     "value": 2
+    },
+    "selectseed": {
+     "type": "Int",
+     "value": 0
+    },
+    "gridtype": {
+     "type": "Menu",
+     "value": 0,
+     "menu": [
+      "grid",
+      "hex"
+     ]
+    },
+    "dotiled": {
+     "type": "Toggle",
+     "value": 1
+    },
+    "gridscalex": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "gridscaley": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "gridoffsetx": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gridoffsety": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "gridangle": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp1cr": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp1cg": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp1cb": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "colorramp2pos": {
+     "type": "Float",
+     "value": 0.25
+    },
+    "colorramp2cr": {
+     "type": "Float",
+     "value": 0.949999988079071
+    },
+    "colorramp2cg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp2cb": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "colorramp3pos": {
+     "type": "Float",
+     "value": 0.5
+    },
+    "colorramp3cr": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp3cg": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp3cb": {
+     "type": "Float",
+     "value": 0.10000000149011612
+    },
+    "colorramp3interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "colorramp4pos": {
+     "type": "Float",
+     "value": 0.75
+    },
+    "colorramp4cr": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp4cg": {
+     "type": "Float",
+     "value": 0.8500000238418579
+    },
+    "colorramp4cb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp4interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "colorramp5pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp5cr": {
+     "type": "Float",
+     "value": 0.20000000298023224
+    },
+    "colorramp5cg": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "colorramp5cb": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "colorramp5interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "alpharamp1pos": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "alpharamp1value": {
+     "type": "Float",
+     "value": 0.0
+    },
+    "alpharamp1interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    },
+    "alpharamp2pos": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "alpharamp2value": {
+     "type": "Float",
+     "value": 1.0
+    },
+    "alpharamp2interp": {
+     "type": "Menu",
+     "value": 1,
+     "menu": [
+      "constant",
+      "linear",
+      "catmull-rom",
+      "monotonecubic",
+      "bezier",
+      "bspline",
+      "hermite"
+     ]
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,35 @@
+# 10 October 2026 : DEPRECATED as a gate, kept as a log only ; the verdict of a height is visual (zenray-houdini SKILL.md, section of 10 October 2026). FR : mesures de comparaison déprécies comme porte, journal seulement.
+# 10 October 2026 : statistical + structural comparison of a built height against its reference (the histogram alone lies, so seven measures). Usage: CompareHeight.py <window|whitepaint|tile> <built.png> [label]. FR : comparaison structurelle et statistique.
+import sys, json, numpy as np
+from PIL import Image
+from scipy import ndimage as ndi
+B = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+name, png = sys.argv[1], sys.argv[2]
+def load(p):
+    im = Image.open(p).convert('L')
+    if im.size != (1254, 1254): im = im.resize((1254, 1254), Image.LANCZOS)
+    return np.asarray(im, float) / 255.0
+ref = load(B + 'refs/%s_height_ref.png' % name); mine = load(png)
+def stats(a, sign):
+    loc = ndi.uniform_filter(a, 61)
+    chip = (a > loc + 0.10) if sign > 0 else (a < loc - 0.12)
+    chip = ndi.binary_opening(chip, iterations=1)
+    lab, n = ndi.label(chip)
+    sizes = ndi.sum(chip, lab, range(1, n + 1)) if n else np.array([0.0])
+    gy, gx = np.gradient(a)
+    return dict(mean=a.mean(), std=a.std(), grad=np.hypot(gx, gy).mean(), aniso=np.abs(gx).mean() / np.abs(gy).mean(),
+                chip_cover=chip.mean(), chip_count=n, chip_med=float(np.median(sizes)), chip_p90=float(np.percentile(sizes, 90)))
+sign = {'window': 1, 'whitepaint': -1, 'tile': 1}[name]
+r, m = stats(ref, sign), stats(mine, sign)
+def hist(a): return np.histogram(a, bins=64, range=(0, 1))[0] / a.size
+cdf_r, cdf_m = np.cumsum(hist(ref)), np.cumsum(hist(mine))
+wass = float(np.abs(cdf_r - cdf_m).mean())                       # mean CDF gap, 0 = same distribution
+rowp = lambda a: a.mean(axis=1)
+row_corr = float(np.corrcoef(rowp(ref), rowp(mine))[0, 1])
+row_mae = float(np.abs(rowp(ref) - rowp(mine)).mean())
+print('METRICS %s' % name)
+print('  row profile corr %.4f  mae %.4f' % (row_corr, row_mae))
+print('  histogram CDF gap %.4f' % wass)
+for k in r: print('  %-10s ref %9.4f  mine %9.4f  ratio %.3f' % (k, r[k], m[k], (m[k] / r[k]) if r[k] else 0))
+score = max(0.0, 1 - 3 * wass) * 0.25 + max(0.0, row_corr) * 0.25 + max(0.0, 1 - abs(1 - m['grad'] / r['grad'])) * 0.2 + max(0.0, 1 - abs(1 - m['chip_cover'] / max(r['chip_cover'], 1e-6))) * 0.15 + max(0.0, 1 - abs(1 - m['chip_med'] / max(r['chip_med'], 1e-6))) * 0.15
+print('  SCORE %.3f' % score)

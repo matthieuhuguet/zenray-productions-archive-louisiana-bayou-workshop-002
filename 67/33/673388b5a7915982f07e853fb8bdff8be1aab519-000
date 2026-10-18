@@ -1,0 +1,62 @@
+# 10 October 2026 : ONE ENTRY POINT per height. Base graph (its own file) plus the additive iterations listed in IterSpecs.py, each exactly 64 nodes (Iter64.run). EN: each build returns (net, final clamp). FR : un point d'entrée par height ; base puis itérations additives, 64 nodes chacune.
+import sys
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+import WhitePaintV2 as WP, WindowV2 as WV, TileV2 as TV
+import Iter64, IterSpecs as S
+from PIL import Image
+T = HL.T
+def get(net, name):
+    n = net.node(name)
+    assert n is not None, 'missing node ' + name
+    return n
+def finish(net, h, name):
+    return T.node(net, 'clamp', name, [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+def build_wp(upto=None, params=None, netname='H_WhitePaint'):
+    net, out = WP.build(netname=netname, params=params)
+    h = out.inputs()[0]; out.destroy()
+    # 10 October 2026 : fill source = the paint face without chips (substrate plus the L5 lift), so a filled chip becomes flat paint at the right brightness. FR : source de remplissage = face de peinture sans ecaille.
+    lift = dict(WP.P, **(params or {}))['lift']
+    face = T.mix(net, 'X_fill__face_level', get(net, 'L2_substrate__height'), T.const(net, 'X_fill__lift', get(net, 'A01_plank__t'), lift), 3)
+    ctx = dict(t=get(net, 'A01_plank__t'), xs=get(net, 'A03_across__s'), ys=get(net, 'A05_global__y'),
+               bottom=get(net, 'L3_chips__bottom_weight'), inside=get(net, 'L3_chips__keep_inside_plank'),
+               chipmask=get(net, 'L3_chips__mask_in_plank'), face=face)
+    keys = sorted(S.WP)[:upto] if upto is not None else sorted(S.WP)
+    for k in keys:
+        h = Iter64.run(net, h, ctx, S.WP[k], k)
+    return net, finish(net, h, 'Zfinal_height__clamp')
+def build_win(upto=None, params=None, netname='H_Window'):
+    net, out = WV.build(netname=netname, params=params)
+    h = out.inputs()[0]; out.destroy()
+    top = T.smooth(net, 'CTX_top__region', get(net, 'A01_plank__t'), 0.0, 0.33, 1.0, 0.0)   # 10 October 2026 : helper region, 1 at the top planks. FR : zone des planches du haut.
+    # 10 October 2026 : the window face is the bare wood plus the grain of the square patch inside it, so the patch grain is not read as paint. FR : la face inclut le grain du carre.
+    face = T.mix(net, 'X_face__with_patch_grain', get(net, 'C04_height__with_grain'), T.mix(net, 'X_face__patch_grain', get(net, 'G06_patch__vertical_grain'), get(net, 'G05_patch__mask'), 5), 3)
+    # 10 October 2026 : the paint level, the face raised by the paint depth of WindowV2 (0.28). FR : niveau de la peinture relevee.
+    paint_face = T.node(net, 'blur', 'X_paint__smooth_face', [face], size=0.004, filter=1)   # 10 October 2026 : paint is smooth, the wood streaks stay out of it. FR : la peinture est lisse.
+    paint = T.mix(net, 'X_paint__level', paint_face, T.const(net, 'X_paint__depth', get(net, 'A01_plank__t'), 0.28), 3)
+    ctx = dict(t=get(net, 'A01_plank__t'), xs=get(net, 'A03_across__s'), ys=get(net, 'A01_plank__t'),
+               patch=get(net, 'G05_patch__mask'), wood=get(net, 'B02_wood__presence'), top=top,
+               face=face, paint=paint)
+    keys = sorted(S.WN)[:upto] if upto is not None else sorted(S.WN)
+    for k in keys:
+        h = Iter64.run(net, h, ctx, S.WN[k], k)
+    return net, finish(net, h, 'Zfinal_height__clamp')
+def build_tile(seed=0, upto=None, params=None, res=2048, netname='H_RoofTile'):
+    net, out = TV.build(netname, res, params, seed=seed)
+    h = out.inputs()[0]; out.destroy()
+    ctx = dict(t=get(net, 'A02_x__s'), xs=get(net, 'A02_x__s'), ys=get(net, 'A03_y__s'),
+               body=get(net, 'B09_tile__body'), shadow=get(net, 'F02_shadow__below_edge'))
+    keys = sorted(S.TL)[:upto] if upto is not None else sorted(S.TL)
+    for k in keys:
+        h = Iter64.run(net, h, ctx, S.TL[k], k)
+    return net, finish(net, h, 'Zfinal_height__clamp')
+def tile_sheet(upto=None, params=None, res=2048, out=None):
+    sheet = Image.new('L', (1254, 1254), 0)
+    for k in range(36):
+        net, o = build_tile(seed=k, upto=upto, params=params, res=res)
+        tmp = HL.BASE + 'versions/tile/_seed_%02d.png' % k
+        HL.export_png(net, o, tmp, res)
+        im = Image.open(tmp).convert('L').resize((209, 209), Image.LANCZOS)
+        c, r = k % 6, k // 6
+        sheet.paste(im, (int(round(207.6 * c)), int(round(208.0 * r))))
+    sheet.save(out); return out

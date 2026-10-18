@@ -1,0 +1,120 @@
+# 11 October 2026 : compares one exported height with the reference, writes a planche and one journal line with the verdict.
+# EN: metrics, planche (reference, generated, difference, zooms) and a note. Run with system python3.
+# FR : mesures, planche et ligne de journal ; la référence reste un instrument de mesure, jamais une source de pixels.
+import argparse
+import datetime
+import json
+import os
+import shutil
+import subprocess
+
+import numpy as np
+from PIL import Image, ImageDraw
+
+import Common as C
+
+
+def load(path):
+    return np.asarray(Image.open(path).convert('L'), dtype=np.float64)
+
+
+def metrics(ref, gen):
+    rr, rg = ref.mean(axis=1), gen.mean(axis=1)
+    out = {'mean_ref': round(float(ref.mean()), 2), 'mean_gen': round(float(gen.mean()), 2),
+           'std_ref': round(float(ref.std()), 2), 'std_gen': round(float(gen.std()), 2),
+           'p05_gen': round(float(np.percentile(gen, 5)), 1), 'p95_gen': round(float(np.percentile(gen, 95)), 1),
+           'row_corr': round(float(np.corrcoef(rr, rg)[0, 1]), 4) if rg.std() > 0 else None,
+           'grad_dy_ref': round(float(np.abs(np.diff(ref, axis=0)).mean()), 3),
+           'grad_dy_gen': round(float(np.abs(np.diff(gen, axis=0)).mean()), 3),
+           'grad_dx_ref': round(float(np.abs(np.diff(ref, axis=1)).mean()), 3),
+           'grad_dx_gen': round(float(np.abs(np.diff(gen, axis=1)).mean()), 3),
+           'mae': round(float(np.abs(ref - gen).mean()), 3)}
+    regions = {}
+    for name, (x0, x1, y0, y1) in C.REGIONS.items():
+        r = ref[y0:y1, x0:x1]
+        g = gen[y0:y1, x0:x1]
+        regions[name] = {'mean_ref': round(float(r.mean()), 1), 'mean_gen': round(float(g.mean()), 1),
+                         'delta': round(float(g.mean() - r.mean()), 1),
+                         'std_ref': round(float(r.std()), 1), 'std_gen': round(float(g.std()), 1)}
+    out['regions'] = regions
+    return out
+
+
+def equiv(gen_path):
+    # 11 October 2026 : the twelve-component score enters the method as a logged measure, never as a gate. FR : score à 12 composantes, journal.
+    run = subprocess.run(['python3', C.METRICS2, 'window', gen_path], capture_output=True, text=True)
+    lines = [ln for ln in run.stdout.splitlines() if ln.strip().startswith('{')]
+    if not lines:
+        return {'error': (run.stderr or run.stdout)[-300:]}
+    return json.loads(lines[-1])
+
+
+def label(draw, xy, text):
+    draw.text(xy, text, fill=255)
+
+
+def planche(ref, gen, out_path, title):
+    # 11 October 2026 : top row reference, generated, difference; bottom row zooms on the louver ends and the square. FR : planche.
+    W = 627
+    diff = np.clip(np.abs(ref - gen) * 3.0, 0, 255)
+    panels = [(ref, 'reference'), (gen, title), (diff, 'ecart x3')]
+    crops = [((0, 720, 300, 1020), 'bout gauche'), ((500, 560, 800, 860), 'carre'), ((954, 720, 1254, 1020), 'bout droit')]
+    gap = 12
+    top_h = W + 34
+    bottom_h = 2 * 300 + 64
+    canvas = Image.new('L', (3 * W + 2 * gap, top_h + bottom_h), 40)
+    draw = ImageDraw.Draw(canvas)
+    for i, (arr, text) in enumerate(panels):
+        im = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).resize((W, W), Image.LANCZOS)
+        x = i * (W + gap)
+        canvas.paste(im, (x, 34))
+        label(draw, (x + 8, 10), text)
+    for i, ((x0, y0, x1, y1), text) in enumerate(crops):
+        x = i * (W + gap)
+        r = Image.fromarray(ref[y0:y1, x0:x1].astype(np.uint8))
+        g = Image.fromarray(gen[y0:y1, x0:x1].astype(np.uint8))
+        canvas.paste(r, (x, top_h + 30))
+        canvas.paste(g, (x, top_h + 30 + 300 + 4))
+        label(draw, (x + 8, top_h + 8), 'ref ' + text)
+        label(draw, (x + 8, top_h + 30 + 300 + 8), 'gen ' + text)
+    canvas.save(out_path)
+
+
+def journal(entry):
+    os.makedirs(os.path.dirname(C.JOURNAL), exist_ok=True)
+    with open(C.JOURNAL, 'a', encoding='utf-8') as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + '\n')
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('gen')
+    ap.add_argument('--id', required=True)
+    ap.add_argument('--note', default='')
+    ap.add_argument('--equiv', action='store_true')
+    args = ap.parse_args()
+    ref = load(C.REF)
+    gen = load(args.gen)
+    if ref.shape != gen.shape:
+        raise SystemExit('shape mismatch %s %s' % (ref.shape, gen.shape))
+    m = metrics(ref, gen)
+    eq = equiv(args.gen) if args.equiv else None
+    # 11 October 2026 : every iteration keeps its own image, the next pass never overwrites it. FR : image gardée par itération.
+    kept = os.path.join(C.VERSIONS, args.id + '.png')
+    if os.path.abspath(args.gen) != os.path.abspath(kept):
+        shutil.copy2(args.gen, kept)
+    out_png = os.path.join(C.VERSIONS, args.id + '_planche.png')
+    planche(ref, gen, out_png, args.id)
+    entry = {'date': '11 October 2026', 'time_utc': datetime.datetime.utcnow().strftime('%H:%M:%S'),
+             'id': args.id, 'gen': args.gen, 'planche': out_png, 'note': args.note, 'equiv': eq, 'metrics': m}
+    journal(entry)
+    print(json.dumps({'id': args.id, 'mean_gen': m['mean_gen'], 'std_gen': m['std_gen'], 'row_corr': m['row_corr'],
+                      'mae': m['mae'], 'equiv': eq}, ensure_ascii=False))
+    worst = sorted(m['regions'].items(), key=lambda kv: -abs(kv[1]['delta']))[:4]
+    for name, r in worst:
+        print('  %-12s ref %6.1f gen %6.1f delta %+6.1f std ref %5.1f gen %5.1f' % (
+            name, r['mean_ref'], r['mean_gen'], r['delta'], r['std_ref'], r['std_gen']))
+    print('planche', out_png)
+
+
+main()

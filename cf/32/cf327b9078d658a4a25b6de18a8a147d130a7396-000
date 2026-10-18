@@ -1,0 +1,49 @@
+# SimpleHeight, fenêtre Louisiana Bayou (zenray-simple-height)
+
+Dernière mise à jour : 11 October 2026.
+
+## Méthode (11 October 2026)
+
+- Un calque à la fois. Chaque passe reconstruit un graphe Copernicus neuf (`copnet` SimpleHeight), avec de vrais nodes : `constant`, `ramp`, `remap`, `blend`, `fractalnoise`, `streakblur`, `rop_image`. Aucun VEX, aucun Python dans le graphe.
+- La référence `refs/window_height_ref.png` ne sert qu'à mesurer. Ses nombres vivent dans `measures/ref_measures.json` : joints, plateaux, biseau des bouts, distribution du bruit. Aucun pixel de la référence n'entre dans le graphe.
+- Chaque passe : export à 1254 px dans `versions/<calque>.png`, comparaison par `Compare.py`, planche `versions/<id>_planche.png`, ligne dans `measures/iterations.jsonl`, verdict daté dans `measures/verdicts.md`.
+- Le calque suivant ne démarre qu'après le verdict. Une image d'itération n'est jamais écrasée.
+
+## Commandes (11 October 2026)
+
+```bash
+HY=/Applications/Houdini/Current/Frameworks/Houdini.framework/Versions/Current/Resources/bin/hython
+cd /Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/SimpleHeight/Scripts
+"$HY" BuildSimpleHeight.py --upto 5
+python3 Compare.py ../versions/L05_chips.png --id L05_chips_v1 --equiv
+```
+
+## Résultats (11 October 2026)
+
+| Calque | Image | Moyenne (réf 109,3) | Écart type (réf 54,3) | EQUIV | Verdict |
+|---|---|---|---|---|---|
+| L00 plateau | `versions/L00_base.png` | 110,0 | 0 | 0,259 | base posée |
+| L01 joints des planches | `versions/L01_bands_plateau.png` | 109,4 | 18,9 | 0,153 | joints aux bonnes hauteurs, texture absente |
+| L02 éclats | `versions/L02_flakes_t056.png` | 109,1 | 48,0 | 0,317 | éclats justes en quantité, bords durs |
+| L03 fibres (rampe 0,03) | `versions/L03_grain_v3.png` | 109,3 | 48,9 | 0,352 | fibres visibles |
+| L04 biseau des bouts | `versions/L04_bevel.png` | 109,0 | 48,5 | 0,336 | biseau vertical, chanfrein diagonal absent (fibres à 0,06 à cette passe) |
+| L05 éclats fins | `versions/L05_chips.png` | 108,5 | 54,3 | 0,373 | écart type juste, gradient vertical 9,9 contre 29,8 |
+
+## Ce qui reste, mesuré (11 October 2026)
+
+- Gradient vertical 9,9 contre 29,8 : arêtes nettes encore insuffisantes.
+- Biseau des bouts : la référence coupe chaque lame en biais, le graphe la coupe à la verticale.
+- Fissures sombres des planches, nœuds, panneau carré à grain vertical, rail clair avec biseau.
+- Éclats : formes trop rondes, bords trop durs.
+
+## Limite (11 October 2026)
+
+- L'identité stricte est inatteignable sans recopier la référence, ce que la règle du projet interdit. Les positions aléatoires des éclats ne se recopient pas par un générateur procédural (IoU mesuré entre 0,03 et 0,20 dans le bilan de la boucle M01).
+
+## Fichiers (11 October 2026)
+
+- `Scripts/BuildSimpleHeight.py` : un calque par fonction, `--upto N`, `--probe`, `--probe-noise`, `--probe-fine`.
+- `Scripts/Compare.py` : mesures, planche, journal.
+- `Scripts/MeasureRef.py` : mesures de la référence. `Scripts/ProbeCop.py` : noms de paramètres COP vérifiés (`measures/probe_cop.json`).
+- `hip/` : un hip par calque. Le hip d'un calque est écrasé à chaque passe ; les images restent.
+- Archive des passes M01 précédentes : `/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/archive/2026-10-11_window-M01-before-simple-height/` (1 269 fichiers, 336 Mo, empreintes SHA-256 vérifiées avant et après déplacement).

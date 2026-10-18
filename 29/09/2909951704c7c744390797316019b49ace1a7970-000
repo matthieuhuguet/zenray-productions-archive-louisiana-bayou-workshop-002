@@ -1,0 +1,16 @@
+# 10 October 2026 : tiny parameter search (protocol step 3: a small random search tunes the values, nodes stay the source of truth). Usage inside Houdini: Sweep.run('whitepaint', configs). FR : petite recherche de parametres.
+import os, sys, re, json, subprocess, importlib
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+def run(kind, module, configs, tag):
+    import HeightLab as HL
+    mod = importlib.import_module(module); importlib.reload(mod)
+    res = []
+    for i, cfg in enumerate(configs):
+        net, out = mod.build(params=cfg)
+        png = HL.BASE + 'versions/%s/sweep_%s_%d.png' % (kind, tag, i)
+        HL.export_png(net, out, png)
+        txt = HL.measure(kind, png)
+        m = re.search(r'SCORE ([0-9.]+)', txt)
+        res.append((float(m.group(1)) if m else -1, i, cfg))
+    res.sort(key=lambda t: -t[0])
+    return res

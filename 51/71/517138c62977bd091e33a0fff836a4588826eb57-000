@@ -1,0 +1,26 @@
+# 10 October 2026 : one iteration = one image kept in versions/<name>/<tag>.png, its JSON measures in measures/<name>/, a 2 x 2 panel (reference and built, full and 2x zoom) and one line in versions/INDEX.md. EN: the only logging helper. FR : une itération = une image rangée, ses mesures, une planche de comparaison et une ligne au journal.
+import os, json, subprocess, shutil
+from PIL import Image
+B = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/'
+ZOOM = (477, 477, 777, 777)   # central 300 px crop, shown at 2x. FR : zoom central.
+def panel(name, built, out):
+    ref = Image.open(B + 'refs/%s_height_ref.png' % name).convert('L').resize((1254, 1254), Image.LANCZOS)
+    mine = Image.open(built).convert('L').resize((1254, 1254), Image.LANCZOS)
+    tile = Image.new('L', (1210, 1210), 90)
+    s = 600
+    tile.paste(ref.resize((s, s), Image.LANCZOS), (0, 0)); tile.paste(mine.resize((s, s), Image.LANCZOS), (610, 0))
+    tile.paste(ref.crop(ZOOM).resize((s, s), Image.NEAREST), (0, 610)); tile.paste(mine.crop(ZOOM).resize((s, s), Image.NEAREST), (610, 610))
+    tile.save(out)
+def record(name, tag, src, label):
+    d = B + 'versions/%s/' % name; os.makedirs(d, exist_ok=True)
+    dst = d + '%s.png' % tag
+    shutil.copy(src, dst)
+    txt = subprocess.run(['python3', B + 'Scripts/Metrics2.py', name, dst], capture_output=True, text=True).stdout
+    js = json.loads(txt.strip().splitlines()[-1])
+    md = B + 'measures/%s/' % name; os.makedirs(md, exist_ok=True)
+    json.dump(js, open(md + '%s.json' % tag, 'w'), indent=1)
+    panel(name, dst, md + 'panel_%s.png' % tag)
+    with open(B + 'versions/INDEX.md', 'a') as f:
+        f.write('- 10 October 2026 : %s %s, EQUIV %.4f, weakest %s %.3f : %s\n' % (name, tag, js['equiv'], js['min_name'], js['min'], label))
+    print(txt.strip().splitlines()[0])
+    return js

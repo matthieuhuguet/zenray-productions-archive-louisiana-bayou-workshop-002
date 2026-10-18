@@ -1,0 +1,220 @@
+# 10 October 2026 : builds ONE graph in ONE pass from a spec JSON. Each item is a family of a kind (m, madd, abs, fam, each 8 nodes), and the spec names a finish (lips, abs, add, mult, planar, plus an optional histogram curve). EN: layout and grain are WindowSDF's. Run through PassLoop.py under hython. FR : un graphe, une passe, des familles et une finition par methode.
+import json
+import os
+import sys
+import time
+
+SCRIPTS = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts'
+if SCRIPTS not in sys.path:
+    sys.path.insert(0, SCRIPTS)
+import WindowSDF as W  # imports HeightLab, so it runs only inside hython
+
+HL = W.HL
+T = W.T
+P = W.P
+FAMILY_NODES = 8  # 10 October 2026 : fractal families (m, madd, abs, fam) are exactly 8 nodes. FR : 8 nodes par famille.
+# 10 October 2026 : node count per family kind for the Copernicus kinds added on this date. EN. FR : nodes par famille, par type.
+KIND_NODES = {'m': 8, 'madd': 8, 'abs': 8, 'fam': 8, 'worley': 6, 'streak': 7, 'cell': 6, 'eik': 8, 'turing': 8, 'tile': 9, 'sdf': 7}
+
+
+def mask_args(it):
+    return (it['size'], it['sx'], it['sy'], it['off'], it['fine'], it['fine_size'], it['t0'], it['t1'], it['ragged_amp'], it['ragged_size'])
+
+
+def mask_family(net, tag, acc, drive, gate, args, mode):
+    # 10 October 2026 : WindowSDF.mfam with the union mode as a parameter (12 max, 3 add). EN. FR : mfam, mode d'union parametrable.
+    size, sx, sy, off, fine, fine_size, t0, t1, ragged_amp, ragged_size = args
+    n1 = T.node(net, 'fractalnoise', tag + '_coarse', [drive], amp=1.0, center=0.0,
+                elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=sy, offx=off)
+    n2 = T.node(net, 'fractalnoise', tag + '_fine', [drive], amp=fine, center=0.0,
+                elementsize=fine_size, elementsizetype=1, elementscalex=1.0, elementscaley=1.0, offx=off * 1.7)
+    nm = T.mix(net, tag + '_sum', n1, n2, 3)
+    m = T.smooth(net, tag + '_mask', nm, t0, t1, 0.0, 1.0)
+    g = T.mix(net, tag + '_gated', m, gate, 5)
+    n3 = T.node(net, 'fractalnoise', tag + '_ragged', [drive], amp=ragged_amp, center=0.0,
+                elementsize=ragged_size, elementsizetype=1, elementscalex=1.0, elementscaley=1.0, offx=off * 0.3 + 5.0)
+    gj = T.mix(net, tag + '_jagged', g, n3, 3)
+    return T.mix(net, tag + '_union', acc, gj, mode)
+
+
+def fam_additive(net, tag, h, drive, gate, it):
+    # 10 October 2026 : additive family with invert 0 (WindowSDF.fam reads invert 1, which paints the canvas white). EN. FR : famille additive, signe corrige.
+    n1 = T.node(net, 'fractalnoise', tag + '_coarse', [drive], amp=1.0, center=0.0,
+                elementsize=it['size'], elementsizetype=1, elementscalex=it['sx'], elementscaley=it['sy'], offx=it['off'])
+    n2 = T.node(net, 'fractalnoise', tag + '_fine', [drive], amp=it['fine'], center=0.0,
+                elementsize=it['fine_size'], elementsizetype=1, elementscalex=1.0, elementscaley=1.0, offx=it['off'] * 1.7)
+    nm = T.mix(net, tag + '_sum', n1, n2, 3)
+    m = T.smooth(net, tag + '_mask', nm, it['t0'], it['t1'], 0.0, 1.0)
+    g = T.mix(net, tag + '_gated', m, gate, 5)
+    d = T.node(net, 'monotosdf', tag + '_sdf', [g], invert=0, iso=P['iso'])
+    lip = T.smooth(net, tag + '_lip', d, 0.0, it['width'], 0.0, it['amp'])
+    return T.mix(net, tag + '_apply', h, lip, 3)
+
+
+def jag_union(net, tag, acc, mask, gate, drive, it, mode):
+    # 10 October 2026 : gate, ragged edge, union (4 nodes). EN. FR : porte, bord dente, union.
+    g = T.mix(net, tag + '_gated', mask, gate, 5)
+    n3 = T.node(net, 'fractalnoise', tag + '_ragged', [drive], amp=it['ragged_amp'], center=0.0,
+                elementsize=it['ragged_size'], elementsizetype=1, elementscalex=1.0, elementscaley=1.0, offx=it['off'] * 0.3 + 5.0)
+    gj = T.mix(net, tag + '_jagged', g, n3, 3)
+    return T.mix(net, tag + '_union', acc, gj, mode)
+
+
+def coarse_noise(net, tag, drive, it):
+    return T.node(net, 'fractalnoise', tag + '_coarse', [drive], amp=1.0, center=0.0,
+                  elementsize=it['size'], elementsizetype=1, elementscalex=it['sx'], elementscaley=it['sy'], offx=it['off'])
+
+
+def kind_family(net, it, tag, acc, drive, gate, mode):
+    # 10 October 2026 : the Copernicus families. Each returns its union; node counts are in KIND_NODES. EN : chaque famille renvoie son union. FR : familles Copernicus.
+    kind = it['kind']
+    if kind == 'worley':
+        cells = T.node(net, 'worleynoise', tag + '_cells', [drive], elementsize=it['size'], elementsizetype=1,
+                       elementscalex=it['sx'], elementscaley=it['sy'], offx=it['off'], jitter=it['jitter'])
+        # 10 October 2026 : inverted, so the dark cell centres (values below the threshold) are the flakes; measured quantiles set the threshold. EN. FR : centres des cellules, seuil mesure.
+        mask = T.smooth(net, tag + '_mask', cells, it['t0'], it['t1'], 1.0, 0.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    if kind == 'streak':
+        mask = T.smooth(net, tag + '_mask', coarse_noise(net, tag, drive, it), it['t0'], it['t1'], 0.0, 1.0)
+        streak = T.node(net, 'streakblur', tag + '_streak', [mask], angle=it['angle'], length=it['length'])
+        return jag_union(net, tag, acc, streak, gate, drive, it, mode)
+    if kind == 'cell':
+        cells = T.node(net, 'cellpattern', tag + '_cells', [drive], elementsize=it['size'], elementsizetype=1,
+                       elementscalex=it['sx'], elementscaley=it['sy'], offx=it['off'], jitter=it['jitter'],
+                       density=it['density'], gap=it['gap'], randomheight=1, heightseed=int(it['off']) % 997)
+        mask = T.smooth(net, tag + '_mask', cells, it['t0'], it['t1'], 0.0, 1.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    if kind == 'eik':
+        seeds = T.smooth(net, tag + '_seeds', coarse_noise(net, tag, drive, it), it['t0'], it['t1'], 0.0, 1.0)
+        dist = T.node(net, 'eikonal', tag + '_eikonal', [seeds])
+        mask = T.smooth(net, tag + '_reach', dist, 0.0, it['radius'], 1.0, 0.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    if kind == 'turing':
+        pre = T.smooth(net, tag + '_mask', coarse_noise(net, tag, drive, it), it['t0'], it['t1'], 0.0, 1.0)
+        pattern = T.node(net, 'turingpatterns', tag + '_turing', [pre], iterations=it['iterations'], radius=it['radius'])
+        mask = T.smooth(net, tag + '_pattern', pattern, it['tt0'], it['tt1'], 0.0, 1.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    if kind == 'sdf':
+        # 10 October 2026 : a rectangle from sdfshape (0 inside, rising outside), moved by xform, its inside turned into 1 by a threshold. EN. FR : rectangle SDF deplace par xform.
+        shape = T.node(net, 'sdfshape', tag + '_shape', [], shapeclass='basic', basictype='rect',
+                       rect_sizex=it['rect_sx'], rect_sizey=it['rect_sy'], rect_round=1, rect_roundness=it['rect_round'])
+        moved = T.node(net, 'xform', tag + '_move', [shape], tx=it['tx'], ty=it['ty'])
+        mask = T.smooth(net, tag + '_mask', moved, it['t0'], it['t1'], 1.0, 0.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    if kind == 'tile':
+        tiles = T.node(net, 'tilepattern', tag + '_tiles', [drive], stackbond_rows=it['rows'], stackbond_cols=it['cols'])
+        # 10 October 2026 : tile bodies alone cover most of the canvas, so they are crossed with a noise seed to keep only a share of the tiles. EN. FR : tuiles croisees avec un bruit de germes.
+        seed = T.smooth(net, tag + '_seed', coarse_noise(net, tag, drive, it), it['t0'], it['t1'], 0.0, 1.0)
+        both = T.mix(net, tag + '_both', tiles, seed, 5)
+        mask = T.smooth(net, tag + '_mask', both, 0.5, 0.6, 0.0, 1.0)
+        return jag_union(net, tag, acc, mask, gate, drive, it, mode)
+    raise ValueError('unknown Copernicus kind ' + str(kind))
+
+
+def add_family(net, it, st, ctx):
+    # 10 October 2026 : one family of the item's kind, into the right accumulator. EN. FR : une famille, au bon accumulateur.
+    kind, tag, gate, drive = it['kind'], it['name'], ctx[it['gate']], ctx['t']
+    if kind in ('m', 'madd'):
+        mode = 12 if kind == 'm' else 3
+        key = 'acc_p' if it['target'] == 'P' else 'acc_h'
+        st[key] = mask_family(net, tag, st[key], drive, gate, mask_args(it), mode)
+    elif kind == 'abs':
+        st['h'] = W.absfam(net, tag, st['h'], drive, gate, it['size'], it['sx'], it['sy'], it['off'], it['fine'],
+                           it['fine_size'], it['t0'], it['t1'], it['width'], it['level'], it['mode'])
+    elif kind == 'fam':
+        st['h'] = fam_additive(net, tag, st['h'], drive, gate, it)
+    elif kind in ('worley', 'streak', 'cell', 'eik', 'turing', 'tile', 'sdf'):
+        key = 'acc_p' if it['target'] == 'P' else 'acc_h'
+        st[key] = kind_family(net, it, tag, st[key], drive, gate, 12)
+    else:
+        raise ValueError('unknown family kind ' + str(kind))
+
+
+def grain(net, h, h0):
+    # 10 October 2026 : the fine streak grain of WindowSDF, applied once per finish. EN. FR : grain fin de finition.
+    g = T.node(net, 'fractalnoise', 'Y00_finish__grain_noise', [h0], amp=P['finish_amp'], center=0.0,
+               elementsize=P['grain_size'], elementsizetype=1, elementscalex=P['grain_sx'], elementscaley=1.0, offx=57.3)
+    return T.mix(net, 'F07_height__with_grain', h, g, 3)
+
+
+def lips(net, name, acc, depth_amp):
+    # 10 October 2026 : signed distance of a mask and its rounded lip, the same as WindowSDF.finish_m4 for one target. EN. FR : levre d'une cible.
+    d = T.node(net, 'monotosdf', name + '__sdf', [acc], invert=0, iso=P['iso'])
+    return T.smooth(net, name + '__lip', d, 0.0, P['lip_w'], 0.0, depth_amp)
+
+
+def finish(net, spec, ctx, st):
+    # 10 October 2026 : the method's finish, grain included. EN. FR : finition de la methode.
+    h0, fin = st['h0'], spec.get('finish', 'lips')
+    if fin == 'lips':
+        h = W.finish_m4(net, h0, st['acc_p'], st['acc_h'])
+    elif fin == 'mult':
+        # 10 October 2026 : paint and holes scale the wood height in proportion (brightens and darkens the existing relief). EN. FR : finition multiplicative.
+        tp = lips(net, 'F01_paint', st['acc_p'], 1.0)
+        th = lips(net, 'F02_hole', st['acc_h'], 1.0)
+        up = T.mix(net, 'F03_paint__on_wood', h0, tp, 5)
+        dn = T.mix(net, 'F04_hole__on_wood', h0, th, 5)
+        h = T.mix(net, 'F05_height__plus_paint', h0, up, 3)
+        h = T.mix(net, 'F06_height__minus_holes', h, dn, 4)
+        h = grain(net, h, h0)
+    elif fin == 'planar':
+        # 10 October 2026 : paint and holes inflated from their masks by planarinflate. EN. FR : gonflement planaire des masques.
+        # 10 October 2026 : planarinflate needs a binary seed, so each continuous union is thresholded at 0.5 first. EN. FR : seuil binaire avant le gonflement.
+        bp = T.smooth(net, 'F00_paint__binary', st['acc_p'], 0.45, 0.55, 0.0, 1.0)
+        bh = T.smooth(net, 'F00_hole__binary', st['acc_h'], 0.45, 0.55, 0.0, 1.0)
+        lp = T.node(net, 'planarinflate', 'F01_paint__inflate', [bp], heightscale=P['paint_amp'], pre_scale=2.0, scale=0.05, iterations=25)
+        lh = T.node(net, 'planarinflate', 'F02_hole__inflate', [bh], heightscale=P['hole_amp'], pre_scale=2.0, scale=0.05, iterations=25)
+        h = T.mix(net, 'F03_height__plus_paint', h0, lp, 3)
+        h = T.mix(net, 'F04_height__minus_holes', h, lh, 4)
+        h = grain(net, h, h0)
+    elif fin in ('abs', 'add'):
+        # 10 October 2026 : the families already composed the height. EN. FR : les familles ont deja compose la hauteur.
+        h = grain(net, st['h'], h0)
+    else:
+        raise ValueError('unknown finish ' + str(fin))
+    if spec.get('hist'):
+        # 10 October 2026 : histogram match from the previous pass (curve keys are measured numbers, the reference is not in the graph). EN. FR : appariement d'histogramme.
+        h = T.curve(net, 'G01_height__histogram_match', h, [tuple(k) for k in spec['hist']], 1.0, 0.0, 1.0)
+    return h
+
+
+def build(spec_path, png, res):
+    # 10 October 2026 : a spec may set the paint and hole lip width (default is WindowSDF's). EN. FR : largeur de levre fixable par la spec.
+    _lip = json.load(open(spec_path)).get('lip_w')
+    if _lip is not None:
+        P['lip_w'] = _lip
+    _hole = json.load(open(spec_path)).get('hole_amp')
+    if _hole is not None:
+        P['hole_amp'] = _hole
+    # 10 October 2026 : one fresh graph from the spec, exported once, panel beside it. EN. FR : un graphe frais, un rendu, une planche.
+    spec = json.load(open(spec_path))
+    net = HL.fresh_net('H_Pass')
+    t_build = time.time()
+    ctx, h0 = W.layout(net)
+    st = {'h0': h0, 'h': h0,
+          'acc_p': T.const(net, 'M00_accumulator__paint0', ctx['t'], 0.0),
+          'acc_h': T.const(net, 'M00_accumulator__hole0', ctx['t'], 0.0)}
+    family_nodes = 0
+    for it in spec['items']:
+        before = len(net.children())
+        add_family(net, it, st, ctx)
+        added = len(net.children()) - before
+        assert added == KIND_NODES[it['kind']], 'family %s added %d nodes, expected %d' % (it['name'], added, KIND_NODES[it['kind']])
+        family_nodes += added
+    h = finish(net, spec, ctx, st)
+    out = T.node(net, 'clamp', 'Z00_height__final', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    nodes = len(net.children())
+    build_s = time.time() - t_build
+    os.makedirs(os.path.dirname(png), exist_ok=True)
+    t_cook = time.time()
+    HL.export_png(net, out, png, res)
+    cook_s = time.time() - t_cook
+    panel = os.path.join(os.path.dirname(png), 'panel_' + os.path.basename(png))
+    W._panel(png, panel)
+    return {'families': len(spec['items']), 'family_nodes': family_nodes, 'nodes': nodes, 'res': res,
+            'build_s': round(build_s, 2), 'cook_s': round(cook_s, 2), 'image': png, 'panel': panel}
+
+
+if __name__ == '__main__':
+    spec_path, png, res = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    print('PASS_JSON ' + json.dumps(build(spec_path, png, res)))

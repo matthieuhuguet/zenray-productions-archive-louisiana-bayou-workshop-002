@@ -1,0 +1,32 @@
+# 11 October 2026 : shared paths, measured regions and the measure file reader for SimpleHeight.
+# EN: no numpy here, so this module also loads inside hython. FR : chemins et régions communs, sans numpy.
+import json
+import os
+
+ROOT = '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights'
+SH = os.path.join(ROOT, 'SimpleHeight')
+REF = os.path.join(ROOT, 'refs', 'window_height_ref.png')
+MEASURES = os.path.join(SH, 'measures', 'ref_measures.json')
+VERSIONS = os.path.join(SH, 'versions')
+HIPS = os.path.join(SH, 'hip')
+JOURNAL = os.path.join(SH, 'measures', 'iterations.jsonl')
+METRICS2 = os.path.join(ROOT, 'Scripts', 'Metrics2.py')
+H_REF = 1254
+
+# 11 October 2026 : (x0, x1, y0, y1) boxes, the same as MeasureRef.py. FR : régions mesurées de la fenêtre.
+REGIONS = {
+    'top_planks': (0, 1254, 0, 232),
+    'plank_2': (0, 1254, 240, 408),
+    'rail': (0, 1254, 418, 546),
+    'mid_planks': (0, 510, 556, 716),
+    'square': (520, 750, 574, 712),
+    'louvers': (30, 1224, 738, 1254),
+    'bout_left': (0, 26, 738, 1254),
+    'bout_right': (1228, 1254, 738, 1254),
+}
+
+
+def measures():
+    # 11 October 2026 : the numbers measured on the reference, read-only. FR : mesures de la référence, lecture seule.
+    with open(MEASURES, encoding='utf-8') as fh:
+        return json.load(fh)

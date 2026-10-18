@@ -1,0 +1,102 @@
+# 10 October 2026 : WINDOW TRIM HEIGHT, iteration 2 = the V001 graph (same node names, same values) plus four measured changes : L2 long streaks, L3 paint density by row (measured, additive), L4 four knots at measured centres, L5 lift and patch grain kept free of substrate streaks. With every new value at zero this graph equals V001. EN: real Copernicus nodes only. FR : trim sheet des fenêtres, itération 2 ; à zéro, le graphe redonne V001.
+import sys, json
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+T = HL.T
+N = 1254.0
+P = dict(noise_amp=1.5, grain_amp=0.11, grain_size=0.008, grain_sx=34.0, grain2_amp=0.12, grain2_size=0.003, grain2_sx=60.0,
+         paint_thr=0.20, paint_edge=0.025, paint_depth=0.28, paint_big=0.05, paint_big_sx=1.8, paint_ragged=0.8, paint_small=0.005, paint_mid=0.022, mid_w=1.1,
+         cluster_size=0.20, cluster_sx=2.2, cluster_w=1.4, plank_weight_top=0.0, plank_weight_low=-0.1,
+         rim_size=0.002, rim_amp=0.45,
+         crack_size1=0.010, crack_size2=0.005, crack_sx=60.0, crack_w1=0.012, crack_w2=0.008, crack_amp=0.42,
+         patch_x0=0.411, patch_x1=0.602, patch_y0=0.452, patch_y1=0.572, patch_amp=0.10,
+         # iteration 2 values (zero = V001)
+         streak_amp=0.03, streak_size=0.0025, streak_sx=60.0,
+         density_gain=0.0,   # ablation : the measured row density lowered the score (0.568), removed
+
+         knots=[(360, 68, 28), (90, 160, 22), (75, 307, 20), (130, 365, 24)], knot_k=700.0, knot_amp=0.15,
+         lift=-0.05)   # iteration 2 combination, ablation 10 October 2026 : density 0 (it lowered the score), streaks 0.03 and lift -0.05 kept, knots neutral but drawn in the reference
+
+def noise(net, name, src, amp, size, sx, off, sy=1.0):
+    return T.node(net, 'fractalnoise', name, [src], amp=amp, center=0.0, elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=sy, offx=off)
+def build(netname='H_Window', params=None):
+    p = dict(P); p.update(params or {})
+    prof = json.load(open(HL.BASE + 'measures/window_profile.json'))
+    dens = json.load(open(HL.BASE + 'measures/window_paintdensity.json'))
+    net = HL.fresh_net(netname)
+    ry = T.node(net, 'ramp', 'A00_ramp__down_y', signature='f1', rotation=90.0, cycles=1.0, method=0)
+    t = T.lin(net, 'A01_plank__t', ry, 0.0, 1.0)
+    rx = T.node(net, 'ramp', 'A02_ramp__across_x', signature='f1', rotation=0.0, cycles=1.0, method=0)
+    xs = T.lin(net, 'A03_across__s', rx, 0.0, 1.0)
+    keys = [(prof['tau'][i], prof['median'][i]) for i in range(0, len(prof['tau']))]
+    base = T.curve(net, 'B01_profile__median_row', t, keys, 1.0, 0.0, 1.0, T.SMOOTH)
+    wood = T.smooth(net, 'B02_wood__presence', base, 0.18, 0.30)
+    # patch rectangle, first, so that the substrate can be kept out of it
+    px = T.smooth(net, 'G01_patch__x0', xs, p['patch_x0'] - 0.002, p['patch_x0'] + 0.002)
+    px1 = T.smooth(net, 'G02_patch__x1', xs, p['patch_x1'] + 0.002, p['patch_x1'] - 0.002)
+    py = T.smooth(net, 'G03_patch__y0', t, p['patch_y0'] - 0.002, p['patch_y0'] + 0.002)
+    py1 = T.smooth(net, 'G04_patch__y1', t, p['patch_y1'] + 0.002, p['patch_y1'] - 0.002)
+    pmask = T.mix(net, 'G05_patch__mask', T.mix(net, 'G05a_x', px, px1, 5), T.mix(net, 'G05b_y', py, py1, 5), 5)
+    # C wood grain : cotton lowered by the V001 values, long streaks (iteration 2), kept out of the patch
+    g1 = noise(net, 'C01_grain__streaks', t, p['grain_amp'] * 2.0, p['grain_size'], p['grain_sx'], 11.3)
+    g2 = noise(net, 'C02_grain__fine', t, p['grain2_amp'] * 2.0, p['grain2_size'], p['grain2_sx'], 17.9)
+    gsum = T.mix(net, 'C03_grain__sum', g1, g2, 3)
+    st = noise(net, 'C05_grain__long_streaks', t, p['streak_amp'] * 2.0, p['streak_size'], p['streak_sx'], 29.3)
+    gsum = T.mix(net, 'C06_grain__with_streaks', gsum, st, 3)
+    gw = T.mix(net, 'C04a_grain__on_wood', gsum, wood, 5)
+    gw = T.mix(net, 'C07_grain__outside_patch', gw, T.lin(net, 'C07a_patch__keep_outside', pmask, 0.0, 1.0, 1.0, 0.0), 5)
+    h = T.mix(net, 'C04_height__with_grain', base, gw, 3)
+    # D paint : V001 field, plank weight, measured row density added as a shift (iteration 2)
+    nb = noise(net, 'D01_paint__big', t, p['noise_amp'], p['paint_big'], p['paint_big_sx'], 3.1)
+    nm = noise(net, 'D02_paint__mid', t, p['noise_amp'], p['paint_mid'], p['paint_big_sx'] * 1.3, 5.3)
+    ns = noise(net, 'D03_paint__ragged', t, p['noise_amp'], p['paint_small'], 1.6, 7.7)
+    nmm = T.mix(net, 'D04_paint__mid_scaled', nm, T.const(net, 'D04a_const__mid', t, p['mid_w']), 5)
+    nsm = T.mix(net, 'D05_paint__ragged_scaled', ns, T.const(net, 'D05a_const__ragged', t, p['paint_ragged']), 5)
+    cl = noise(net, 'D06_paint__cluster', t, p['noise_amp'], p['cluster_size'], p['cluster_sx'], 29.5)
+    clm = T.mix(net, 'D07_paint__cluster_scaled', cl, T.const(net, 'D07a_const__cluster', t, p['cluster_w']), 5)
+    fld = T.mix(net, 'D08_paint__field', T.mix(net, 'D08a_big_mid', nb, nmm, 3), T.mix(net, 'D08b_ragged_cluster', nsm, clm, 3), 3)
+    wt = T.curve(net, 'D09_paint__plank_weight', t, [(0.0, 1.0 + p['plank_weight_top']), (0.35, 1.0 + p['plank_weight_top']), (0.40, 1.0 + p['plank_weight_low']), (1.0, 1.0 + p['plank_weight_low'])], 1.0, -1.0, 0.0)
+    fld = T.mix(net, 'D10_paint__field_weighted', fld, wt, 3)
+    dk = [(tau, min(m, 2.0) / 2.0) for tau, m in zip(dens['tau'], dens['mult'])]
+    dcur = T.curve(net, 'D11a_paint__density_by_row', t, dk, 1.0, 0.0, 2.0, T.SMOOTH)
+    dm1 = T.mix(net, 'D11b_paint__density_minus_one', dcur, T.const(net, 'D11c_const__one', t, 1.0), 4)
+    dm1g = T.mix(net, 'D11d_paint__density_gain', dm1, T.const(net, 'D11e_const__gain', t, p['density_gain']), 5)
+    fld = T.mix(net, 'D11_paint__field_density', fld, dm1g, 3)
+    pm = T.smooth(net, 'D12_paint__mask', fld, p['paint_thr'] - p['paint_edge'], p['paint_thr'] + p['paint_edge'])
+    pm = T.mix(net, 'D13_paint__mask_on_wood', pm, wood, 5)
+    pd = T.mix(net, 'D14_paint__depth', pm, T.const(net, 'D14a_const__depth', t, p['paint_depth']), 5)
+    h = T.mix(net, 'D15_height__with_paint', h, pd, 3)
+    # E rim of the paint edge
+    mb = T.node(net, 'blur', 'E01_rim__mask_blur', [pm], size=p['rim_size'], filter=1)
+    rim = T.node(net, 'clamp', 'E02_rim__positive', [T.mix(net, 'E02a_rim__blur_minus_mask', mb, pm, 4)], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    h = T.mix(net, 'E03_height__with_rim', h, T.mix(net, 'E03a_rim__scaled', rim, T.const(net, 'E03b_const__rim', t, p['rim_amp']), 5), 4)
+    # F cracks on wood only
+    def cracks(tag, size, sx, off, width, amp):
+        n = noise(net, 'F%s_cracks__noise' % tag, t, 1.0, size, sx, off)
+        a = T.node(net, 'function', 'F%s_cracks__abs' % tag, [n], func=0, func_math=0)
+        line = T.smooth(net, 'F%s_cracks__line' % tag, a, 0.0, width, 1.0, 0.0)
+        return T.mix(net, 'F%s_cracks__depth' % tag, line, T.const(net, 'F%sa_const__amp' % tag, t, amp), 5)
+    c1 = cracks('1', p['crack_size1'], p['crack_sx'], 41.3, p['crack_w1'], p['crack_amp'])
+    c2 = cracks('2', p['crack_size2'], p['crack_sx'] * 1.2, 57.9, p['crack_w2'], p['crack_amp'] * 0.8)
+    cr = T.mix(net, 'F3_cracks__sum', c1, c2, 3)
+    # 10 October 2026 : the horizontal cracks stop at the square patch, whose board joints are vertical. FR : fissures horizontales hors de la plaque.
+    keep_out = T.lin(net, 'F4b_patch__keep_outside', pmask, 0.0, 1.0, 1.0, 0.0)
+    h = T.mix(net, 'F4_height__with_cracks', h, T.mix(net, 'F4a_cracks__on_wood', cr, T.mix(net, 'F4c_wood__outside_patch', wood, keep_out, 5), 5), 4)
+    # L4 knots : rings from the distance to each measured centre, envelope per knot (iteration 2)
+    for i, (kpx, kpy, kpr) in enumerate(p['knots']):
+        kx, ky, R = kpx / N, kpy / N, 2.0 * kpr / N
+        dx = T.lin(net, 'K%02d_knot__dx' % i, xs, kx - 0.5, kx + 0.5, -1.0, 1.0)
+        dy = T.lin(net, 'K%02d_knot__dy' % i, t, ky - 0.5, ky + 0.5, -1.0, 1.0)
+        rad = T.mix(net, 'K%02d_knot__radius' % i, dx, dy, 8)
+        sn = T.node(net, 'function', 'K%02d_knot__sin' % i, [rad], func=2, func_trig=0, scale=p['knot_k'], shift=0.0)
+        ring = T.lin(net, 'K%02d_knot__ring01' % i, sn, -1.0, 1.0, 0.0, 1.0)
+        env = T.smooth(net, 'K%02d_knot__envelope' % i, rad, R * 0.9, R * 1.1, 1.0, 0.0)
+        term = T.mix(net, 'K%02d_knot__term' % i, ring, env, 5)
+        term = T.mix(net, 'K%02d_knot__amp' % i, term, T.const(net, 'K%02d_knot__amp_const' % i, t, p['knot_amp']), 5)
+        h = T.mix(net, 'K%02d_height__with_knot' % i, h, term, 3)
+    # G patch grain (vertical, V001) and lift (iteration 2)
+    vg = noise(net, 'G06_patch__vertical_grain', t, p['patch_amp'] * 2.0, 0.006, 0.04, 2.9, 1.0)
+    h = T.mix(net, 'G07_height__with_patch', h, T.mix(net, 'G07a_patch__grain', vg, pmask, 5), 3)
+    h = T.mix(net, 'L5_finish__lift', h, T.const(net, 'L5_finish__lift_const', t, p['lift']), 3)
+    out = T.node(net, 'clamp', 'Z00_height__final', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    return net, out

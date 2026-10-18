@@ -1,0 +1,94 @@
+# 10 October 2026 : base revised after IT04a and IT07 : lift 0.15 (brings the mean to the measured 0.614) (paint brightness measured), speckle weight 0.4, chip depth 0.18. WHITE PAINT HEIGHT, iteration 1, real Copernicus nodes. EN: layers L1 planks, L2 substrate grain, L3 paint chips, L4 knot and cracks, L5 finish. Only two tables come from the reference, both measured: the median lap profile and the chip density per plank phase (paint face only). No reference image is read into the graph. FR : height du clin peint, itération 1, couches nommées, tables mesurées seulement.
+import sys, json
+sys.path.insert(0, '/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/Scripts')
+import HeightLab as HL
+T = HL.T
+B = HL.BASE
+P = dict(
+    cycles=8.4914, phase=0.16,                                   # L1 planks, measured pitch and phase
+    grain_amp=0.10, grain_size=0.010, grain_sx=14.0,             # L2 substrate, cotton noise lowered in iteration 1
+    streak_amp=0.05, streak_size=0.0025, streak_sx=60.0,         # L2 long fine streaks along the grain
+    streak2_amp=0.04, streak2_size=0.007, streak2_sx=28.0,
+    chip_thr=0.62, chip_edge=0.02, chip_depth=0.18,              # L3 paint chips
+    chip_big=0.03, chip_big_sx=2.4, chip_small=0.006, ragged=0.5, bottom_weight=0.6, chip_amp=1.0,
+    big2_size=0.10, big2_sx=2.0, big2_w=1.2,
+    knot_x=0.242, knot_y=0.617, knot_r=0.030, knot_k=600.0, knot_amp=0.10,   # L4 one knot with rings, measured position
+    crack_size1=0.014, crack_sx=60.0, crack_w1=0.010, crack_amp=0.35,
+    crack_size3=0.004, crack_w3=0.018, crack_amp3=0.35,
+    lift=0.15, rim_size=0.002, rim_amp=0.6,                      # L5 finish
+    fine_amp=0.30, fine_size=0.0015, fine_sx=18.0,
+    speck_size=0.0035, speck_thr=0.70, speck_w=0.4, speck_seed=61.3)   # 10 October 2026 : iteration 2 values, variant B of the sweep. FR : valeurs de l'itération 2.
+def noise(net, name, src, amp, size, sx, off, sy=1.0):
+    return T.node(net, 'fractalnoise', name, [src], amp=amp, center=0.0, elementsize=size, elementsizetype=1, elementscalex=sx, elementscaley=sy, offx=off)
+def build(netname='H_WhitePaint', params=None):
+    p = dict(P); p.update(params or {})
+    prof = json.load(open(B + 'measures/whitepaint_profile.json'))
+    dens = json.load(open(B + 'measures/whitepaint_chipdensity.json'))
+    net = HL.fresh_net(netname)
+    ry = T.node(net, 'ramp', 'A00_ramp__down_y', signature='f1', rotation=90.0, cycles=p['cycles'], method=1); ry.parm('phase').set(p['phase'])
+    t = T.lin(net, 'A01_plank__t', ry, 0.0, 1.0)
+    rx = T.node(net, 'ramp', 'A02_ramp__across_x', signature='f1', rotation=0.0, cycles=1.0, method=0)
+    xs = T.lin(net, 'A03_across__s', rx, 0.0, 1.0)
+    rg = T.node(net, 'ramp', 'A04_ramp__global_y', signature='f1', rotation=90.0, cycles=1.0, method=0)
+    ys = T.lin(net, 'A05_global__y', rg, 0.0, 1.0)
+    # L1 planks : measured median lap profile
+    keys = [(prof['tau'][i], prof['median'][i]) for i in range(0, len(prof['tau']), 2)]
+    base = T.curve(net, 'L1_planks__lap_profile_median', t, keys, 1.0, 0.0, 1.0, T.SMOOTH)
+    # L2 substrate : cotton noise lowered, long streaks added
+    gr = noise(net, 'L2_substrate__grain', t, p['grain_amp'] * 2.0, p['grain_size'], p['grain_sx'], 11.3)
+    st1 = noise(net, 'L2_substrate__streak_a', t, p['streak_amp'] * 2.0, p['streak_size'], p['streak_sx'], 31.7)
+    st2 = noise(net, 'L2_substrate__streak_b', t, p['streak2_amp'] * 2.0, p['streak2_size'], p['streak2_sx'], 47.1)
+    gsum = T.mix(net, 'L2_substrate__grain_sum', T.mix(net, 'L2_substrate__streaks', st1, st2, 3), gr, 3)
+    h = T.mix(net, 'L2_substrate__height', base, gsum, 3)
+    # L3 paint chips : field, density of chips by plank phase (measured), big and big2 clusters, ragged edge
+    nb = noise(net, 'L3_chips__big_noise', t, p['chip_amp'] * 2.0, p['chip_big'], p['chip_big_sx'], 3.1)
+    nb2 = noise(net, 'L3_chips__big2_noise', t, 2.0, p['big2_size'], p['big2_sx'], 13.9)
+    nb2w = T.mix(net, 'L3_chips__big2_weight', nb2, T.const(net, 'L3_chips__big2_const', t, p['big2_w']), 5)
+    ns = noise(net, 'L3_chips__ragged_noise', t, p['chip_amp'] * 2.0, p['chip_small'], 1.6, 7.7)
+    nsm = T.mix(net, 'L3_chips__ragged_scaled', ns, T.const(net, 'L3_chips__ragged_const', t, p['ragged']), 5)
+    wgt = T.curve(net, 'L3_chips__bottom_weight', t, [(0.0, 0.0), (0.15, 0.0), (0.5, 0.35), (0.84, 1.0), (0.93, 0.7), (1.0, 0.0)], 1.0, 0.0, p['bottom_weight'])
+    field = T.mix(net, 'L3_chips__field_big', nb, nsm, 3)
+    field = T.mix(net, 'L3_chips__field_big2', field, nb2w, 12)
+    field = T.mix(net, 'L3_chips__field_weighted', field, wgt, 3)
+    dk = [(tau, min(m, 2.0) / 2.0) for tau, m in zip(dens['tau'], dens['mult'])]
+    dcur = T.curve(net, 'L3_chips__density_by_plank', t, dk, 1.0, 0.0, 2.0, T.SMOOTH)
+    field = T.mix(net, 'L3_chips__field_density', field, dcur, 5)
+    mask = T.smooth(net, 'L3_chips__mask', field, p['chip_thr'] - p['chip_edge'], p['chip_thr'] + p['chip_edge'])
+    keepm = T.curve(net, 'L3_chips__keep_inside_plank', t, [(0.0, 0.0), (0.09, 0.0), (0.14, 1.0), (0.93, 1.0), (1.0, 0.0)], 1.0, 0.0, 1.0)
+    mask = T.mix(net, 'L3_chips__mask_in_plank', mask, keepm, 5)
+    depth = T.mix(net, 'L3_chips__depth', mask, T.const(net, 'L3_chips__depth_const', t, p['chip_depth']), 5)
+    h = T.mix(net, 'L3_chips__height', h, depth, 4)
+    # L3b speckle : tiny flecks along the chip edges (iteration 2). FR : petites écailles.
+    sp = noise(net, 'L3b_speckle__noise', t, 2.0, p['speck_size'], 1.0, p['speck_seed'])
+    spm = T.smooth(net, 'L3b_speckle__mask', sp, p['speck_thr'] - 0.01, p['speck_thr'] + 0.01)
+    spd = T.mix(net, 'L3b_speckle__depth', spm, T.const(net, 'L3b_speckle__depth_const', t, p['chip_depth'] * p['speck_w']), 5)
+    h = T.mix(net, 'L3b_speckle__height', h, spd, 4)
+    # L4 knot : rings from the distance to the knot centre, one envelope. Cracks along the grain.
+    dx = T.lin(net, 'L4_knot__dx', xs, p['knot_x'] - 0.5, p['knot_x'] + 0.5, -1.0, 1.0)
+    dy = T.lin(net, 'L4_knot__dy', ys, p['knot_y'] - 0.5, p['knot_y'] + 0.5, -1.0, 1.0)
+    rad = T.mix(net, 'L4_knot__radius', dx, dy, 8)
+    sn = T.node(net, 'function', 'L4_knot__sin', [rad], func=2, func_trig=0, scale=p['knot_k'], shift=0.0)
+    ring = T.lin(net, 'L4_knot__ring01', sn, -1.0, 1.0, 0.0, 1.0)
+    env = T.smooth(net, 'L4_knot__envelope', rad, p['knot_r'] * 2.0 * 0.9, p['knot_r'] * 2.0 * 1.1, 1.0, 0.0)
+    kn = T.mix(net, 'L4_knot__term', ring, env, 5)
+    kn = T.mix(net, 'L4_knot__amp', kn, T.const(net, 'L4_knot__amp_const', t, p['knot_amp']), 5)
+    h = T.mix(net, 'L4_height__with_knot', h, kn, 3)
+    def cracks(tag, size, sx, off, width, amp):
+        n = noise(net, 'L4_cracks__noise_%s' % tag, t, 1.0, size, sx, off)
+        a = T.node(net, 'function', 'L4_cracks__abs_%s' % tag, [n], func=0, func_math=0)
+        line = T.smooth(net, 'L4_cracks__line_%s' % tag, a, 0.0, width, 1.0, 0.0)
+        return T.mix(net, 'L4_cracks__depth_%s' % tag, line, T.const(net, 'L4_cracks__amp_%s' % tag, t, amp), 5)
+    c1 = cracks('1', p['crack_size1'], p['crack_sx'], 41.3, p['crack_w1'], p['crack_amp'])
+    c3 = cracks('3', p['crack_size3'], p['crack_sx'] * 1.2, 83.7, p['crack_w3'], p['crack_amp3'])
+    cr = T.mix(net, 'L4_cracks__sum', c1, c3, 3)
+    keep2 = T.curve(net, 'L4_cracks__keep_off_groove', t, [(0.0, 0.0), (0.07, 0.3), (0.14, 1.0), (0.9, 1.0), (0.97, 0.3), (1.0, 0.0)], 1.0, 0.0, 1.0)
+    h = T.mix(net, 'L4_height__with_cracks', h, T.mix(net, 'L4_cracks__on_paint', cr, keep2, 5), 4)
+    # L5 finish : lift, rim of the chips, fine skin
+    h = T.mix(net, 'L5_finish__lift', h, T.const(net, 'L5_finish__lift_const', t, p['lift']), 3)
+    mb = T.node(net, 'blur', 'L5_rim__mask_blur', [mask], size=p['rim_size'], filter=1)
+    rim = T.node(net, 'clamp', 'L5_rim__positive', [T.mix(net, 'L5_rim__blur_minus_mask', mb, mask, 4)], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    h = T.mix(net, 'L5_finish__with_rim', h, T.mix(net, 'L5_rim__scaled', rim, T.const(net, 'L5_rim__amp_const', t, p['rim_amp']), 5), 3)
+    fine = noise(net, 'L5_finish__fine_noise', t, p['fine_amp'], p['fine_size'], p['fine_sx'], 21.7)
+    h = T.mix(net, 'L5_finish__with_fine', h, T.mix(net, 'L5_finish__fine_on_paint', fine, keep2, 5), 3)
+    out = T.node(net, 'clamp', 'L5_final__height', [h], dolowerlimit=1, lowerlimit=0.0, doupperlimit=1, upperlimit=1.0)
+    return net, out
