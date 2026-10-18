@@ -1,0 +1,187 @@
+{
+ "tag": "M02_P3",
+ "render": "/Users/zenray/Create/Build/Productions/ZenRayHoudini/LouisianaBayou/Heights/versions/window/M02/P3.png",
+ "grid": 6,
+ "regions": {
+  "top": {
+   "area_px": 519156,
+   "threshold_low": 0.3529,
+   "threshold_high": 0.6353,
+   "ref_light": 0.2443,
+   "ren_light": 0.0677,
+   "ref_dark": 0.2465,
+   "ren_dark": 0.0892,
+   "iou_light": 0.096,
+   "iou_dark": 0.2007,
+   "mean_ref": 0.4849,
+   "mean_ren": 0.4899,
+   "missing_light": 0.2169,
+   "missing_light_peak": {
+    "centre_xy": [
+     0.75,
+     0.083
+    ],
+    "share_of_error": 0.1372
+   },
+   "extra_light": 0.0404,
+   "extra_light_peak": {
+    "centre_xy": [
+     0.583,
+     0.25
+    ],
+    "share_of_error": 0.1546
+   },
+   "missing_dark": 0.1904,
+   "missing_dark_peak": {
+    "centre_xy": [
+     0.083,
+     0.083
+    ],
+    "share_of_error": 0.0991
+   },
+   "extra_dark": 0.0331,
+   "extra_dark_peak": {
+    "centre_xy": [
+     0.083,
+     0.083
+    ],
+    "share_of_error": 0.1575
+   }
+  },
+  "lames": {
+   "area_px": 953520,
+   "threshold_low": 0.2235,
+   "threshold_high": 0.549,
+   "ref_light": 0.2476,
+   "ren_light": 0.1455,
+   "ref_dark": 0.2475,
+   "ren_dark": 0.2075,
+   "iou_light": 0.218,
+   "iou_dark": 0.6326,
+   "mean_ref": 0.3975,
+   "mean_ren": 0.4076,
+   "missing_light": 0.1773,
+   "missing_light_peak": {
+    "centre_xy": [
+     0.25,
+     0.917
+    ],
+    "share_of_error": 0.0682
+   },
+   "extra_light": 0.0751,
+   "extra_light_peak": {
+    "centre_xy": [
+     0.25,
+     0.583
+    ],
+    "share_of_error": 0.0873
+   },
+   "missing_dark": 0.0712,
+   "missing_dark_peak": {
+    "centre_xy": [
+     0.75,
+     0.417
+    ],
+    "share_of_error": 0.0548
+   },
+   "extra_dark": 0.0312,
+   "extra_dark_peak": {
+    "centre_xy": [
+     0.75,
+     0.917
+    ],
+    "share_of_error": 0.0932
+   }
+  },
+  "bouts": {
+   "area_px": 63840,
+   "threshold_low": 0.2353,
+   "threshold_high": 0.5137,
+   "ref_light": 0.249,
+   "ren_light": 0.2614,
+   "ref_dark": 0.2496,
+   "ren_dark": 0.2217,
+   "iou_light": 0.2736,
+   "iou_dark": 0.5037,
+   "mean_ref": 0.386,
+   "mean_ren": 0.3999,
+   "missing_light": 0.1394,
+   "missing_light_peak": {
+    "centre_xy": [
+     0.917,
+     0.417
+    ],
+    "share_of_error": 0.1829
+   },
+   "extra_light": 0.1518,
+   "extra_light_peak": {
+    "centre_xy": [
+     0.083,
+     0.583
+    ],
+    "share_of_error": 0.1937
+   },
+   "missing_dark": 0.0917,
+   "missing_dark_peak": {
+    "centre_xy": [
+     0.083,
+     0.583
+    ],
+    "share_of_error": 0.1539
+   },
+   "extra_dark": 0.0639,
+   "extra_dark_peak": {
+    "centre_xy": [
+     0.083,
+     0.75
+    ],
+    "share_of_error": 0.1754
+   }
+  },
+  "carre": {
+   "area_px": 36000,
+   "threshold_low": 0.4078,
+   "threshold_high": 0.6353,
+   "ref_light": 0.2449,
+   "ren_light": 0.0629,
+   "ref_dark": 0.2485,
+   "ren_dark": 0.0925,
+   "iou_light": 0.051,
+   "iou_dark": 0.1293,
+   "mean_ref": 0.5145,
+   "mean_ren": 0.5022,
+   "missing_light": 0.2299,
+   "missing_light_peak": {
+    "centre_xy": [
+     0.583,
+     0.583
+    ],
+    "share_of_error": 0.3483
+   },
+   "extra_light": 0.0479,
+   "extra_light_peak": {
+    "centre_xy": [
+     0.417,
+     0.583
+    ],
+    "share_of_error": 0.4421
+   },
+   "missing_dark": 0.2094,
+   "missing_dark_peak": {
+    "centre_xy": [
+     0.417,
+     0.583
+    ],
+    "share_of_error": 0.333
+   },
+   "extra_dark": 0.0535,
+   "extra_dark_peak": {
+    "centre_xy": [
+     0.583,
+     0.583
+    ],
+    "share_of_error": 0.4218
+   }
+  }
+ }
+}

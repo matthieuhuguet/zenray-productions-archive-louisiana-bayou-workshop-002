@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Louisiana Bayou : boucle M01</title>
+<style>
+body{margin:20px;background:#18181b;color:#e8e8ec;font:14px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif}
+h1{font-size:20px;margin:0 0 8px} h2{font-size:16px;margin:22px 0 8px}
+.state{color:#c9c9d1;margin:4px 0} .note{font-size:13px;color:#9a9aa6}
+.strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+.strip figure{margin:0;flex:none} .strip img{width:260px;display:block;border:1px solid #3a3a41}
+figcaption{font-size:12px;color:#9a9aa6;margin-top:4px}
+table{border-collapse:collapse;margin-top:6px} th,td{border:1px solid #3a3a41;padding:4px 8px;text-align:left;font-variant-numeric:tabular-nums}
+.grid td{width:150px;text-align:center;font-size:13px}
+.good{color:#78d78f} .near{color:#f0be5a} .far{color:#f06969}
+</style>
+</head>
+<body>
+<h1>Louisiana Bayou, fenêtre : boucle M01 par passes</h1>
+<p class="state">État : <b>running</b> · passes faites : 36 · dernière passe : P44 · prochaine : P45 · familles : 512 · pause : 15 s · budget de cuisson : 20.0 s · mis à jour : 11 October 2026, 00:20</p>
+<p class="state">Profondeur de trou prochaine : 0,274 (bornes 0,10 à 0,45, départ 0,22).</p>
+<p class="state">Meilleure pire cellule : 0,047 à la passe P29 · seuils provisoires : 0,010 par cellule, 0,020 par région.</p>
+<p class="note">Le score mesure des proportions claire et sombre, par région et par cellule, sur les seuils absolus de la référence. Il ne mesure pas la position des motifs : une zone peut passer sans que ses détails se ressemblent. Rien n'est validé à 99 pour cent : les seuils se testent contre le verdict à l'œil de Matthieu.</p>
+<h2>Référence et six dernières passes</h2><div class="strip">
+<figure><img src="../../refs/window_height_ref.png" alt="Référence"><figcaption>Référence</figcaption></figure>
+<figure><img src="M01/P39.png" alt="P39"><figcaption>P39 · pire cellule 0,128 · pire région 0,109</figcaption></figure>
+<figure><img src="M01/P40.png" alt="P40"><figcaption>P40 · pire cellule 0,173 · pire région 0,143</figcaption></figure>
+<figure><img src="M01/P41.png" alt="P41"><figcaption>P41 · pire cellule 0,183 · pire région 0,149</figcaption></figure>
+<figure><img src="M01/P42.png" alt="P42"><figcaption>P42 · pire cellule 0,077 · pire région 0,077</figcaption></figure>
+<figure><img src="M01/P43.png" alt="P43"><figcaption>P43 · pire cellule 0,076 · pire région 0,074</figcaption></figure>
+<figure><img src="M01/P44.png" alt="P44"><figcaption>P44 · pire cellule 0,075 · pire région 0,072</figcaption></figure>
+</div>
+<h2>Vérification par cellules, passe P44</h2><table class="grid">
+<tr>
+<td class="far">R1C1<br>claire 0,286 · sombre 0,126<br>écart 0,043</td>
+<td class="far">R1C2<br>claire 0,283 · sombre 0,137<br>écart 0,075</td>
+</tr>
+<tr>
+<td class="far">R2C1<br>claire 0,206 · sombre 0,243<br>écart 0,042</td>
+<td class="far">R2C2<br>claire 0,206 · sombre 0,245<br>écart 0,056</td>
+</tr>
+<tr>
+<td class="near">R3C1<br>claire 0,168 · sombre 0,275<br>écart 0,026</td>
+<td class="near">R3C2<br>claire 0,181 · sombre 0,255<br>écart 0,022</td>
+</tr>
+<tr>
+<td class="far">R4C1<br>claire 0,160 · sombre 0,323<br>écart 0,050</td>
+<td class="near">R4C2<br>claire 0,162 · sombre 0,329<br>écart 0,028</td>
+</tr>
+</table>
+<h2>Toutes les passes de la boucle</h2><table><tr><th>Passe</th><th>Date</th><th>Familles</th><th>Nodes</th><th>Cuisson</th><th>Pire cellule</th><th>Moyenne cellules</th><th>Pire région</th><th>Verdict</th><th>Image</th></tr>
+<tr><td>P9</td><td>10 October 2026, 23:55</td><td>512</td><td>4136</td><td>9,0 s</td><td class="far">0,076</td><td>0,045</td><td class="far">0,127</td><td>running</td><td><a href="M01/P9.png">ouvrir</a></td></tr>
+<tr><td>P10</td><td>10 October 2026, 23:57</td><td>768</td><td>6184</td><td>17,8 s</td><td class="far">0,175</td><td>0,083</td><td class="far">0,184</td><td>running</td><td><a href="M01/P10.png">ouvrir</a></td></tr>
+<tr><td>P11</td><td>10 October 2026, 23:58</td><td>512</td><td>4136</td><td>8,4 s</td><td class="far">0,071</td><td>0,041</td><td class="far">0,219</td><td>running</td><td><a href="M01/P11.png">ouvrir</a></td></tr>
+<tr><td>P12</td><td>10 October 2026, 23:59</td><td>512</td><td>4136</td><td>7,5 s</td><td class="far">0,153</td><td>0,066</td><td class="far">0,148</td><td>running</td><td><a href="M01/P12.png">ouvrir</a></td></tr>
+<tr><td>P13</td><td>11 October 2026, 00:00</td><td>512</td><td>4136</td><td>12,4 s</td><td class="far">0,073</td><td>0,058</td><td class="far">0,233</td><td>running</td><td><a href="M01/P13.png">ouvrir</a></td></tr>
+<tr><td>P14</td><td>11 October 2026, 00:00</td><td>512</td><td>4136</td><td>7,7 s</td><td class="far">0,154</td><td>0,077</td><td class="far">0,137</td><td>running</td><td><a href="M01/P14.png">ouvrir</a></td></tr>
+<tr><td>P15</td><td>11 October 2026, 00:00</td><td>512</td><td>4136</td><td>7,1 s</td><td class="far">0,078</td><td>0,051</td><td class="far">0,077</td><td>running</td><td><a href="M01/P15.png">ouvrir</a></td></tr>
+<tr><td>P16</td><td>11 October 2026, 00:01</td><td>512</td><td>4136</td><td>9,1 s</td><td class="far">0,147</td><td>0,055</td><td class="far">0,115</td><td>running</td><td><a href="M01/P16.png">ouvrir</a></td></tr>
+<tr><td>P17</td><td>11 October 2026, 00:02</td><td>512</td><td>4136</td><td>8,1 s</td><td class="far">0,061</td><td>0,035</td><td class="far">0,060</td><td>running</td><td><a href="M01/P17.png">ouvrir</a></td></tr>
+<tr><td>P18</td><td>11 October 2026, 00:02</td><td>512</td><td>4136</td><td>7,8 s</td><td class="far">0,060</td><td>0,033</td><td class="far">0,060</td><td>running</td><td><a href="M01/P18.png">ouvrir</a></td></tr>
+<tr><td>P19</td><td>11 October 2026, 00:02</td><td>512</td><td>4136</td><td>7,2 s</td><td class="far">0,060</td><td>0,032</td><td class="far">0,060</td><td>running</td><td><a href="M01/P19.png">ouvrir</a></td></tr>
+<tr><td>P20</td><td>11 October 2026, 00:03</td><td>512</td><td>4136</td><td>9,4 s</td><td class="far">0,054</td><td>0,027</td><td class="far">0,053</td><td>running</td><td><a href="M01/P20.png">ouvrir</a></td></tr>
+<tr><td>P21</td><td>11 October 2026, 00:03</td><td>512</td><td>4136</td><td>7,6 s</td><td class="far">0,051</td><td>0,026</td><td class="far">0,051</td><td>running</td><td><a href="M01/P21.png">ouvrir</a></td></tr>
+<tr><td>P22</td><td>11 October 2026, 00:04</td><td>512</td><td>4136</td><td>7,2 s</td><td class="far">0,051</td><td>0,026</td><td class="far">0,050</td><td>running</td><td><a href="M01/P22.png">ouvrir</a></td></tr>
+<tr><td>P23</td><td>11 October 2026, 00:04</td><td>512</td><td>4136</td><td>12,1 s</td><td class="far">0,050</td><td>0,026</td><td class="far">0,049</td><td>running</td><td><a href="M01/P23.png">ouvrir</a></td></tr>
+<tr><td>P24</td><td>11 October 2026, 00:05</td><td>512</td><td>4136</td><td>7,7 s</td><td class="far">0,049</td><td>0,026</td><td class="far">0,048</td><td>running</td><td><a href="M01/P24.png">ouvrir</a></td></tr>
+<tr><td>P25</td><td>11 October 2026, 00:05</td><td>768</td><td>6184</td><td>15,1 s</td><td class="far">0,051</td><td>0,023</td><td class="far">0,054</td><td>running</td><td><a href="M01/P25.png">ouvrir</a></td></tr>
+<tr><td>P26</td><td>11 October 2026, 00:06</td><td>768</td><td>6184</td><td>22,1 s</td><td class="far">0,053</td><td>0,023</td><td class="far">0,052</td><td>running</td><td><a href="M01/P26.png">ouvrir</a></td></tr>
+<tr><td>P27</td><td>11 October 2026, 00:07</td><td>512</td><td>4136</td><td>7,2 s</td><td class="far">0,050</td><td>0,026</td><td class="far">0,049</td><td>running</td><td><a href="M01/P27.png">ouvrir</a></td></tr>
+<tr><td>P28</td><td>11 October 2026, 00:08</td><td>512</td><td>4136</td><td>7,7 s</td><td class="far">0,048</td><td>0,026</td><td class="far">0,047</td><td>running</td><td><a href="M01/P28.png">ouvrir</a></td></tr>
+<tr><td>P29</td><td>11 October 2026, 00:08</td><td>512</td><td>4136</td><td>7,8 s</td><td class="far">0,047</td><td>0,026</td><td class="far">0,046</td><td>running</td><td><a href="M01/P29.png">ouvrir</a></td></tr>
+<tr><td>P30</td><td>11 October 2026, 00:09</td><td>512</td><td>4136</td><td>7,7 s</td><td class="far">0,047</td><td>0,026</td><td class="far">0,045</td><td>running</td><td><a href="M01/P30.png">ouvrir</a></td></tr>
+<tr><td>P31</td><td>11 October 2026, 00:10</td><td>512</td><td>4136</td><td>7,1 s</td><td class="far">0,048</td><td>0,026</td><td class="far">0,044</td><td>running</td><td><a href="M01/P31.png">ouvrir</a></td></tr>
+<tr><td>P32</td><td>11 October 2026, 00:10</td><td>512</td><td>4136</td><td>7,6 s</td><td class="far">0,049</td><td>0,026</td><td class="far">0,044</td><td>running</td><td><a href="M01/P32.png">ouvrir</a></td></tr>
+<tr><td>P33</td><td>11 October 2026, 00:11</td><td>512</td><td>4136</td><td>9,7 s</td><td class="far">0,050</td><td>0,026</td><td class="far">0,045</td><td>running</td><td><a href="M01/P33.png">ouvrir</a></td></tr>
+<tr><td>P34</td><td>11 October 2026, 00:12</td><td>512</td><td>4136</td><td>13,6 s</td><td class="far">0,051</td><td>0,026</td><td class="far">0,046</td><td>running</td><td><a href="M01/P34.png">ouvrir</a></td></tr>
+<tr><td>P35</td><td>11 October 2026, 00:12</td><td>512</td><td>4136</td><td>8,8 s</td><td class="far">0,052</td><td>0,026</td><td class="far">0,046</td><td>running</td><td><a href="M01/P35.png">ouvrir</a></td></tr>
+<tr><td>P36</td><td>11 October 2026, 00:13</td><td>512</td><td>4136</td><td>8,0 s</td><td class="far">0,053</td><td>0,026</td><td class="far">0,047</td><td>running</td><td><a href="M01/P36.png">ouvrir</a></td></tr>
+<tr><td>P37</td><td>11 October 2026, 00:14</td><td>512</td><td>4136</td><td>7,8 s</td><td class="far">0,054</td><td>0,026</td><td class="far">0,048</td><td>running</td><td><a href="M01/P37.png">ouvrir</a></td></tr>
+<tr><td>P38</td><td>11 October 2026, 00:14</td><td>512</td><td>4136</td><td>7,0 s</td><td class="far">0,054</td><td>0,026</td><td class="far">0,048</td><td>running</td><td><a href="M01/P38.png">ouvrir</a></td></tr>
+<tr><td>P39</td><td>11 October 2026, 00:18</td><td>512</td><td>4136</td><td>7,1 s</td><td class="far">0,128</td><td>0,056</td><td class="far">0,109</td><td>running</td><td><a href="M01/P39.png">ouvrir</a></td></tr>
+<tr><td>P40</td><td>11 October 2026, 00:18</td><td>512</td><td>4136</td><td>7,0 s</td><td class="far">0,173</td><td>0,066</td><td class="far">0,143</td><td>running</td><td><a href="M01/P40.png">ouvrir</a></td></tr>
+<tr><td>P41</td><td>11 October 2026, 00:19</td><td>512</td><td>4136</td><td>6,9 s</td><td class="far">0,183</td><td>0,068</td><td class="far">0,149</td><td>running</td><td><a href="M01/P41.png">ouvrir</a></td></tr>
+<tr><td>P42</td><td>11 October 2026, 00:19</td><td>512</td><td>4136</td><td>7,2 s</td><td class="far">0,077</td><td>0,052</td><td class="far">0,077</td><td>running</td><td><a href="M01/P42.png">ouvrir</a></td></tr>
+<tr><td>P43</td><td>11 October 2026, 00:20</td><td>512</td><td>4136</td><td>7,0 s</td><td class="far">0,076</td><td>0,047</td><td class="far">0,074</td><td>running</td><td><a href="M01/P43.png">ouvrir</a></td></tr>
+<tr><td>P44</td><td>11 October 2026, 00:20</td><td>512</td><td>4136</td><td>7,0 s</td><td class="far">0,075</td><td>0,043</td><td class="far">0,072</td><td>running</td><td><a href="M01/P44.png">ouvrir</a></td></tr>
+</table>
+<p class="note">Mis à jour : 11 October 2026, 00:20.</p></body></html>
